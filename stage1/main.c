@@ -12,25 +12,11 @@
 #include "stm32f4xx_hal.h"
 #include "debug_printf.h"
 #include "s4527438_hal_lta1000g.h"
+#include "s4527438_hal_joystick.h"
 
 /* Private typedef -----------------------------------------------------------*/
-typedef enum 
-{ 
-    RELEASE=0,
-    PRESS,
-    DEBOUNCING,
-    TRIGGER,
-    STABLE,
-    UNSTABLE,
-} 
-JOYSTICK_Z_State_EnumDef;
-
 typedef struct
 {
-  JOYSTICK_Z_State_EnumDef  JOYSTICK_STATE;      
-  JOYSTICK_Z_State_EnumDef  JOYSTICK_PRE_STATE;      
-  uint16_t                  debounce_press_count;      
-  uint16_t                  debounce_previous_press_count;      
   uint32_t                  tick_count;
   uint32_t                  triggered;
 } JOYSTICK_Debounce_TypeDef;
@@ -67,6 +53,7 @@ void Hardware_init(void);
 int main(void)  {
 
     int read_value;
+    unsigned short ADC_value = 0; 
 
 	BRD_init();			//Initalise Board
 	Hardware_init();	//Initalise hardware modules
@@ -81,7 +68,11 @@ int main(void)  {
 		//BRD_LEDGreenToggle();
 		//BRD_LEDBlueToggle();
 
-		HAL_Delay(1000);		//Delay for 1s
+        read_value = s4527438_hal_joystick_x_read();
+        ADC_value = ((unsigned short)read_value)&0x3FF;
+        s4527438_hal_lta1000g_write(ADC_value);
+		//HAL_Delay(1000);		//Delay for 1s
+		HAL_Delay(100);		//Delay for 1s
 
 	}
 
@@ -96,6 +87,7 @@ int main(void)  {
 void Hardware_init(void) {
 
     s4527438_hal_lta1000g_init();
+    s4527438_hal_joystick_init();
 
 	BRD_LEDInit();		//Initialise LEDS
 
@@ -174,8 +166,6 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
         joystick_switch_debounce_update();
 
         if( joystick_switch_debounce_is_triggered() ) {
-            current_ledbar_status ^= LEDBAR_LED_ALL_ON_MASK;
-            s4527438_hal_lta1000g_write(current_ledbar_status);
             joystick_switch_debounce_reset();
         }
     }

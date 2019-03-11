@@ -10,6 +10,7 @@ PROJ_NAME=main
 #Your local source files
 SRCS = $(PROJ_NAME).c
 CFLAGS += -DENABLE_DEBUG_UART #enable USB Virtual Com Port
+CFLAGS += -DHAL_ADC_MODULE_ENABLED #enable USB Virtual Com Port
 ###################################################
 ROOT=$(shell pwd)
 
@@ -21,7 +22,7 @@ OBJS=$(SRCS:.c=.o)
 all: proj
 
 #include joystick makefile
-#include /home/csse3010/csse3010/mylib/joystick/filelist.mk
+include /home/csse3010/csse3010/mylib/joystick/filelist.mk
 
 #include LED makefile
 include /home/csse3010/csse3010/mylib/lta1000g/filelist.mk
