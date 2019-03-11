@@ -3,6 +3,7 @@
 #
 # all the files will be generated with this name (main.elf, main.bin, main.hex, etc)
 
+
 #Name of project
 PROJ_NAME=main
 
@@ -19,14 +20,14 @@ OBJS=$(SRCS:.c=.o)
 .PHONY: $(shell mkdir -p obj) lib proj all depend
 all: proj
 
-ifdef MYLIB
+
+#ifdef MYLIB
 #include joystick makefile - NOTE MUST BE LAST TO INCLUDE
-include /home/csse3010/mylib/joystick/filelist.mk
+#include /home/csse3010/csse3010/mylib/joystick/filelist.mk
 
 #include LED makefile - NOTE MUST BE LAST TO INCLUDE
-include /home/csse3010/mylib/lta1000g/filelist.mk
-endif
-
+include /home/csse3010/csse3010/mylib/lta1000g/filelist.mk
+#endif
 #include nucelo-f429zi makefile - NOTE MUST BE LAST TO INCLUDE
 include $(SOURCELIB_ROOT)/components/boards/nucleo-f429zi/board.mk
 
