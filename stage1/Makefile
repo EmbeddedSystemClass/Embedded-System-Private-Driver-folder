@@ -20,14 +20,12 @@ OBJS=$(SRCS:.c=.o)
 .PHONY: $(shell mkdir -p obj) lib proj all depend
 all: proj
 
-
-#ifdef MYLIB
-#include joystick makefile - NOTE MUST BE LAST TO INCLUDE
+#include joystick makefile
 #include /home/csse3010/csse3010/mylib/joystick/filelist.mk
 
-#include LED makefile - NOTE MUST BE LAST TO INCLUDE
+#include LED makefile
 include /home/csse3010/csse3010/mylib/lta1000g/filelist.mk
-#endif
+
 #include nucelo-f429zi makefile - NOTE MUST BE LAST TO INCLUDE
 include $(SOURCELIB_ROOT)/components/boards/nucleo-f429zi/board.mk
 
