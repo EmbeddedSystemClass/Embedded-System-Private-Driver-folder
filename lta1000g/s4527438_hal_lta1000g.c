@@ -19,23 +19,20 @@
 #include "s4527438_hal_lta1000g.h"
 
 /* Private typedef -----------------------------------------------------------*/
-/* Private define ------------------------------------------------------------*/
-/* Private macro -------------------------------------------------------------*/
-/* Private variables ---------------------------------------------------------*/
-/* Private function prototypes -----------------------------------------------*/
-/**
-  * @brief General Purpose I/O
-  */
-
 typedef struct
 {
   GPIO_TypeDef  *GPIO_PORT;      
   uint16_t      GPIO_PIN;      
-  //uint32_t      RESERVED[236]; 
 } GPIO_PIN_Info;
+
+/* Private define ------------------------------------------------------------*/
+/* Private macro -------------------------------------------------------------*/
+/* Private variables ---------------------------------------------------------*/
 static GPIO_PIN_Info segment_to_gpio_pin_info[(LEDBAR_LED_END - LEDBAR_LED_START + 1)] = {0x00};
 
+/* Private function prototypes -----------------------------------------------*/
 static void lta1000g_seg_set(int segment,unsigned char segment_value);
+
 
 void s4527438_hal_lta1000g_init(void) {
     GPIO_InitTypeDef  GPIO_InitStructure;
@@ -145,79 +142,66 @@ static void lta1000g_seg_set(int segment,unsigned char segment_value) {
     } else if( segment_value == 0 ) {
         gpio_port->BSRR |= (gpio_info->GPIO_PIN) << 16;
     }
-#if 0
-    if ((ledmask & LEDBAR_0_LEDMASK) != 0) {
-        BRD_GREEN_LED_GPIO_PORT->BSRR |= BRD_GREEN_LED_PIN;
-    }
-
-    if ((ledmask & BRD_BLUE_LEDMASK) != 0) {
-        BRD_BLUE_LED_GPIO_PORT->BSRR |= BRD_BLUE_LED_PIN;
-    }
-
-    if ((ledmask & BRD_RED_LEDMASK) != 0) {
-        BRD_RED_LED_GPIO_PORT->BSRR |= BRD_RED_LED_PIN;
-    }
-#endif
 }
 
 void s4527438_hal_lta1000g_write(unsigned short value) {
     if ((value & LEDBAR_0_LEDMASK) != 0) {
-        lta1000g_seg_set(0,1);
+        lta1000g_seg_set(LEDBAR_0_LED,LEDBAR_VALUE_ON);
     }else {
-        lta1000g_seg_set(0,0);
+        lta1000g_seg_set(LEDBAR_0_LED,LEDBAR_VALUE_OFF);
     }
 
     if ((value & LEDBAR_1_LEDMASK) != 0) {
-        lta1000g_seg_set(1,1);
+        lta1000g_seg_set(LEDBAR_1_LED,LEDBAR_VALUE_ON);
     }else {
-        lta1000g_seg_set(1,0);
+        lta1000g_seg_set(LEDBAR_1_LED,LEDBAR_VALUE_OFF);
     }
 
     if ((value & LEDBAR_2_LEDMASK) != 0) {
-        lta1000g_seg_set(2,1);
+        lta1000g_seg_set(LEDBAR_2_LED,LEDBAR_VALUE_ON);
     }else {
-        lta1000g_seg_set(2,0);
+        lta1000g_seg_set(LEDBAR_2_LED,LEDBAR_VALUE_OFF);
     }
 
     if ((value & LEDBAR_3_LEDMASK) != 0) {
-        lta1000g_seg_set(3,1);
+        lta1000g_seg_set(LEDBAR_3_LED,LEDBAR_VALUE_ON);
     }else {
-        lta1000g_seg_set(3,0);
+        lta1000g_seg_set(LEDBAR_3_LED,LEDBAR_VALUE_OFF);
     }
 
     if ((value & LEDBAR_4_LEDMASK) != 0) {
-        lta1000g_seg_set(4,1);
+        lta1000g_seg_set(LEDBAR_4_LED,LEDBAR_VALUE_ON);
     }else {
-        lta1000g_seg_set(4,0);
+        lta1000g_seg_set(LEDBAR_4_LED,LEDBAR_VALUE_OFF);
     }
 
     if ((value & LEDBAR_5_LEDMASK) != 0) {
-        lta1000g_seg_set(5,1);
+        lta1000g_seg_set(LEDBAR_5_LED,LEDBAR_VALUE_ON);
     }else {
-        lta1000g_seg_set(5,0);
+        lta1000g_seg_set(LEDBAR_5_LED,LEDBAR_VALUE_OFF);
     }
 
     if ((value & LEDBAR_6_LEDMASK) != 0) {
-        lta1000g_seg_set(6,1);
+        lta1000g_seg_set(LEDBAR_6_LED,LEDBAR_VALUE_ON);
     }else {
-        lta1000g_seg_set(6,0);
+        lta1000g_seg_set(LEDBAR_6_LED,LEDBAR_VALUE_OFF);
     }
 
     if ((value & LEDBAR_7_LEDMASK) != 0) {
-        lta1000g_seg_set(7,1);
+        lta1000g_seg_set(LEDBAR_7_LED,LEDBAR_VALUE_ON);
     }else {
-        lta1000g_seg_set(7,0);
+        lta1000g_seg_set(LEDBAR_7_LED,LEDBAR_VALUE_OFF);
     }
 
     if ((value & LEDBAR_8_LEDMASK) != 0) {
-        lta1000g_seg_set(8,1);
+        lta1000g_seg_set(LEDBAR_8_LED,LEDBAR_VALUE_ON);
     }else {
-        lta1000g_seg_set(8,0);
+        lta1000g_seg_set(LEDBAR_8_LED,LEDBAR_VALUE_OFF);
     }
 
     if ((value & LEDBAR_9_LEDMASK) != 0) {
-        lta1000g_seg_set(9,1);
+        lta1000g_seg_set(LEDBAR_9_LED,LEDBAR_VALUE_ON);
     }else {
-        lta1000g_seg_set(9,0);
+        lta1000g_seg_set(LEDBAR_9_LED,LEDBAR_VALUE_OFF);
     }
 }

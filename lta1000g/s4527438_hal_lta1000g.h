@@ -16,6 +16,9 @@
 #ifndef S4527438_HAL_LTA1000G_H_
 #define S4527438_HAL_LTA1000G_H_
 
+#define LEDBAR_VALUE_ON             0
+#define LEDBAR_VALUE_OFF            1
+
 /**********************  BOARD LEDs  *****************************/
 
 //LED definitions (Left ~ Right : D0 ~ D9)
@@ -84,6 +87,18 @@
 
 #define LEDBAR_LEDMASK_START                LEDBAR_0_LEDMASK
 #define LEDBAR_LEDMASK_END                  LEDBAR_9_LEDMASK
+
+#define LEDBAR_LED_ALL_ON_MASK              (   LEDBAR_0_LEDMASK \
+                                                | LEDBAR_1_LEDMASK\
+                                                | LEDBAR_2_LEDMASK\
+                                                | LEDBAR_3_LEDMASK\
+                                                | LEDBAR_4_LEDMASK\
+                                                | LEDBAR_5_LEDMASK\
+                                                | LEDBAR_6_LEDMASK\
+                                                | LEDBAR_7_LEDMASK\
+                                                | LEDBAR_8_LEDMASK\
+                                                | LEDBAR_9_LEDMASK\
+                                            )
 
 void s4527438_hal_lta1000g_init();
 void s4527438_hal_lta1000g_write(unsigned short value);
