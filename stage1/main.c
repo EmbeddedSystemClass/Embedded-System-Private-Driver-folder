@@ -76,8 +76,8 @@ static int current_MPD_speed_collection_delay_count = MPD_SPEED_COLLECTION_WINDO
 
 void Hardware_init(void);
 static void ledbar_mpd_display_update(void);
-static void mpd_speed_reset(void);
-static void mpd_speed_count_polling(void);
+static void mpd_count_reset(void);
+static void mpd_count_polling(void);
 static void mpd_speed_update(void);
 
 /**
@@ -104,8 +104,6 @@ int main(void)  {
 	/* Main processing loop */
     while (1) {
 
-		debug_printf("LED Toggle time: %d\n\r", HAL_GetTick());	//Print debug message with system time (ms)
-        
 #if 0
         read_value = s4527438_hal_joystick_x_read();
         ADC_value = ((unsigned short)read_value)&0x3FF;
@@ -125,9 +123,9 @@ int main(void)  {
         if( current_MPD_speed_collection_delay_count == 0 ) {
             current_MPD_speed_collection_delay_count = MPD_SPEED_COLLECTION_WINDOW_DELAY_COUNT;
             mpd_speed_update();
-            mpd_speed_reset();
+            mpd_count_reset();
         } else {
-            mpd_speed_count_polling();
+            mpd_count_polling();
         }
 
         if( current_MPD_speed_count == 0 ) {
@@ -152,19 +150,11 @@ void Hardware_init(void) {
 
     s4527438_hal_lta1000g_init();
     s4527438_hal_joystick_init();
-
-	BRD_LEDInit();		//Initialise LEDS
-
-	/* Turn off LEDs */
-	BRD_LEDRedOff();
-	BRD_LEDGreenOff();
-	BRD_LEDBlueOff();
 }
 
 static void ledbar_mpd_display_update(void) {
     if( current_ledbar_shift_pattern == L_TO_R ) {
         if( current_ledbar_value & LEDBAR_MPD_SHIFT_L_TO_R_END ) {
-	        BRD_LEDGreenOff();
             LEDBAR_MPD_SHIFT_L_TO_R(current_ledbar_value);
             current_ledbar_value |= LEDBAR_MPD_SHIFT_L_TO_R_END_REPEAT;
         } else {
@@ -178,10 +168,11 @@ static void ledbar_mpd_display_update(void) {
             LEDBAR_MPD_SHIFT_R_TO_L(current_ledbar_value);
         }
     }
+	debug_printf("%x\n\r", current_ledbar_value);
     s4527438_hal_lta1000g_write(current_ledbar_value);
 }
 
-static void mpd_speed_reset(void) {
+static void mpd_count_reset(void) {
         pattern_count[PATTERN1_INDEX] = 0;
         pattern_count[PATTERN2_INDEX] = 0;
         pattern_count[PATTERN3_INDEX] = 0;
@@ -190,7 +181,7 @@ static void mpd_speed_reset(void) {
         pattern_count[PATTERN6_INDEX] = 0;
 }
 
-static void mpd_speed_count_polling(void) {
+static void mpd_count_polling(void) {
     int read_value;
     unsigned short ADC_value = 0; 
 
