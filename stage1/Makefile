@@ -10,7 +10,7 @@ PROJ_NAME=main
 #Your local source files
 SRCS = $(PROJ_NAME).c
 CFLAGS += -DENABLE_DEBUG_UART #enable USB Virtual Com Port
-CFLAGS += -DHAL_ADC_MODULE_ENABLED #enable USB Virtual Com Port
+#CFLAGS += -DHAL_ADC_MODULE_ENABLED #enable USB Virtual Com Port
 ###################################################
 ROOT=$(shell pwd)
 
