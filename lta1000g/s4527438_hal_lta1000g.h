@@ -103,4 +103,13 @@
 void s4527438_hal_lta1000g_init();
 void s4527438_hal_lta1000g_write(unsigned short value);
 
+#define LEDBAR_MPD_INIT_VALUE                (0x0003)
+#define LEDBAR_MPD_SHIFT_L_TO_R(input)      (input = input << 1)
+#define LEDBAR_MPD_SHIFT_L_TO_R_END         LEDBAR_9_LEDMASK
+#define LEDBAR_MPD_SHIFT_L_TO_R_END_REPEAT  LEDBAR_0_LEDMASK
+
+#define LEDBAR_MPD_SHIFT_R_TO_L(input)      (input = input >> 1)
+#define LEDBAR_MPD_SHIFT_R_TO_L_END         LEDBAR_0_LEDMASK
+#define LEDBAR_MPD_SHIFT_R_TO_L_END_REPEAT  LEDBAR_9_LEDMASK
+
 #endif /* S4527438_HAL_LTA1000G_H_ */
