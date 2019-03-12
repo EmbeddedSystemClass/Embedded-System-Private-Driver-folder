@@ -15,35 +15,22 @@
 #include "s4527438_hal_joystick.h"
 
 /* Private typedef -----------------------------------------------------------*/
-typedef struct
+typedef enum
 {
-  uint32_t                  tick_count;
-  uint32_t                  triggered;
-} JOYSTICK_Debounce_TypeDef;
-
+    L_TO_R = 0,
+    R_TO_L
+} MPD_shift_pattern_TypeEnum;
 /* Private define ------------------------------------------------------------*/
-/*********************  JOYSTICK SWITCH BUTTON  *****************************/
-#define JOYSTICK_BUTTON_PIN GPIO_PIN_7     // D51 : PD7
-#define JOYSTICK_BUTTON_GPIO_PORT GPIOD
-#define JOYSTICK_BUTTON_GPIO_CLK_ENABLE() __GPIOD_CLK_ENABLE()
-#define JOYSTICK_BUTTON_EXTI_LINE GPIO_PIN_7
-#define JOYSTICK_BUTTON_EXTI_IRQn EXTI9_5_IRQn
 
-#define JOYSTICK_DEBOUNCE_TIME_LOWER_BOUND          (150U) // 100 ms
-#define JOYSTICK_DEBOUNCE_TIME_UPPER_BOUND          (2000U) // 2 s
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
-static unsigned short current_ledbar_status = LEDBAR_LED_ALL_ON_MASK;
-static JOYSTICK_Debounce_TypeDef joystick_info = {0};
+static unsigned short current_ledbar_value = LEDBAR_LED_ALL_ON_MASK;
+static MPD_shift_pattern_TypeEnum current_ledbar_shift_pattern = L_TO_R;
 
 /* Private function prototypes -----------------------------------------------*/
-static void joystick_switch_init(void);
-static void joystick_switch_debounce_reset(void);
-static uint32_t joystick_switch_debounce_is_triggered(void);
-static void joystick_switch_debounce_update(void);
 
-void EXTI15_10_IRQHandler(void);
 void Hardware_init(void);
+static void ledbar_mpd_display_update(void);
 
 /**
   * @brief  Main program - flashes onboard LEDs
@@ -58,22 +45,32 @@ int main(void)  {
 	BRD_init();			//Initalise Board
 	Hardware_init();	//Initalise hardware modules
 	
+    current_ledbar_value = LEDBAR_MPD_INIT_VALUE;
+    s4527438_hal_lta1000g_write(current_ledbar_value);
+    current_ledbar_shift_pattern = L_TO_R;
+
 	/* Main processing loop */
     while (1) {
 
 		debug_printf("LED Toggle time: %d\n\r", HAL_GetTick());	//Print debug message with system time (ms)
         
-		/* Toggle all LEDs */
-		//BRD_LEDRedToggle();
-		//BRD_LEDGreenToggle();
-		//BRD_LEDBlueToggle();
-
+#if 0
         read_value = s4527438_hal_joystick_x_read();
         ADC_value = ((unsigned short)read_value)&0x3FF;
         s4527438_hal_lta1000g_write(ADC_value);
-		//HAL_Delay(1000);		//Delay for 1s
-		HAL_Delay(100);		//Delay for 1s
+#endif
 
+        /* Check is joystick triggered*/
+        if( s4527438_hal_joystick_is_switch_triggered() ) {
+            if( current_ledbar_shift_pattern == L_TO_R ) {
+                current_ledbar_shift_pattern = R_TO_L;
+            } else {
+                current_ledbar_shift_pattern = L_TO_R;
+            }
+            s4527438_hal_joystick_switch_reset();
+        }
+        ledbar_mpd_display_update();
+		HAL_Delay(2500);		//Delay for 2.5s
 	}
 
     return 0;
@@ -95,86 +92,25 @@ void Hardware_init(void) {
 	BRD_LEDRedOff();
 	BRD_LEDGreenOff();
 	BRD_LEDBlueOff();
-
-    current_ledbar_status = LEDBAR_LED_ALL_ON_MASK;
-    s4527438_hal_lta1000g_write(current_ledbar_status);
-
-    /* Init Joystick IRQ */
-    joystick_switch_init();
 }
 
-static void joystick_switch_init(void) {
-
-    joystick_switch_debounce_reset();
-
-    GPIO_InitTypeDef GPIO_InitStructure;
-
-    JOYSTICK_BUTTON_GPIO_CLK_ENABLE();
-
-    GPIO_InitStructure.Mode = GPIO_MODE_IT_RISING;
-    //GPIO_InitStructure.Mode = GPIO_MODE_INPUT;
-    //GPIO_InitStructure.Pull = GPIO_PULLDOWN;
-    GPIO_InitStructure.Pull = GPIO_NOPULL;
-    GPIO_InitStructure.Pin  = JOYSTICK_BUTTON_PIN;
-    //GPIO_InitStructure.Speed = GPIO_SPEED_FAST;         //Pin latency
-    HAL_GPIO_Init(JOYSTICK_BUTTON_GPIO_PORT, &GPIO_InitStructure);
-
-    HAL_NVIC_SetPriority(JOYSTICK_BUTTON_EXTI_IRQn, 10, 0);
-    HAL_NVIC_EnableIRQ(JOYSTICK_BUTTON_EXTI_IRQn);
-}
-
-static void joystick_switch_debounce_reset(void) {
-    joystick_info.tick_count = 0U;
-    joystick_info.triggered = 0;
-}
-
-static uint32_t joystick_switch_debounce_is_triggered(void) {
-    uint32_t    return_value = joystick_info.triggered;
-    return return_value;
-}
-
-static void joystick_switch_debounce_update(void) {
-    uint32_t cur_tick = HAL_GetTick();
-    
-    if( joystick_info.tick_count == 0 ) {
-        joystick_info.tick_count = cur_tick;
-        return;
-    }
-
-    if( (cur_tick - joystick_info.tick_count) >= JOYSTICK_DEBOUNCE_TIME_LOWER_BOUND  ) {
-        if( (cur_tick - joystick_info.tick_count) < JOYSTICK_DEBOUNCE_TIME_UPPER_BOUND  ) {
-            joystick_info.triggered = 1;
+static void ledbar_mpd_display_update(void) {
+    if( current_ledbar_shift_pattern == L_TO_R ) {
+        if( current_ledbar_value & LEDBAR_MPD_SHIFT_L_TO_R_END ) {
+	        BRD_LEDGreenOff();
+            LEDBAR_MPD_SHIFT_L_TO_R(current_ledbar_value);
+            current_ledbar_value |= LEDBAR_MPD_SHIFT_L_TO_R_END_REPEAT;
         } else {
-            joystick_switch_debounce_reset();
+            LEDBAR_MPD_SHIFT_L_TO_R(current_ledbar_value);
+        }
+    } else {
+        if( current_ledbar_value & LEDBAR_MPD_SHIFT_R_TO_L_END ) {
+            LEDBAR_MPD_SHIFT_R_TO_L(current_ledbar_value);
+            current_ledbar_value |= LEDBAR_MPD_SHIFT_R_TO_L_END_REPEAT;
+        } else {
+            LEDBAR_MPD_SHIFT_R_TO_L(current_ledbar_value);
         }
     }
-    joystick_info.tick_count = cur_tick;
-}
-
-/**
- * @brief EXTI line detection callback
- * @param GPIO_Pin: Specifies the pins connected EXTI line
- * @retval None
- */
-void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
-{
-    int read_value;
-
-    if (GPIO_Pin == JOYSTICK_BUTTON_PIN)
-    {
-		BRD_LEDRedToggle();
-        joystick_switch_debounce_update();
-
-        if( joystick_switch_debounce_is_triggered() ) {
-            joystick_switch_debounce_reset();
-        }
-    }
-}
-
-
-//Override default mapping of this handler to Default_Handler
-void EXTI9_5_IRQHandler(void)
-{
-    HAL_GPIO_EXTI_IRQHandler(JOYSTICK_BUTTON_PIN);
+    s4527438_hal_lta1000g_write(current_ledbar_value);
 }
 
