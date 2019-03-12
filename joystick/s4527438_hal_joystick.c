@@ -206,7 +206,6 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
     if (GPIO_Pin == JOYSTICK_BUTTON_PIN)
     {
-		BRD_LEDRedToggle();
         joystick_switch_debounce_update();
 
     }
