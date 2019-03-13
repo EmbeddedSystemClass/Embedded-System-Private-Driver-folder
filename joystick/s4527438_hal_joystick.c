@@ -160,7 +160,8 @@ static void joystick_switch_init(void) {
     GPIO_InitStructure.Mode = GPIO_MODE_IT_RISING;
     //GPIO_InitStructure.Mode = GPIO_MODE_INPUT;
     //GPIO_InitStructure.Pull = GPIO_PULLDOWN;
-    GPIO_InitStructure.Pull = GPIO_NOPULL;
+    //GPIO_InitStructure.Pull = GPIO_NOPULL;
+    GPIO_InitStructure.Pull = GPIO_PULLUP; 
     GPIO_InitStructure.Pin  = JOYSTICK_BUTTON_PIN;
     //GPIO_InitStructure.Speed = GPIO_SPEED_FAST;         //Pin latency
     HAL_GPIO_Init(JOYSTICK_BUTTON_GPIO_PORT, &GPIO_InitStructure);
