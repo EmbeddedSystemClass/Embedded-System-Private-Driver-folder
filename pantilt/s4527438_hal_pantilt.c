@@ -24,83 +24,64 @@
 
 /* Definition for TIMx clock resources */
 
-#define PWM_PULSE_DURATION_TICK_MIN         6750            // PWM_PERIOD_TICK * 2.25%  
-#define PWM_PULSE_DURATION_TICK_MIDDLE      21750           // PWM_PERIOD_TICK * 7.25%  
-#define PWM_PULSE_DURATION_TICK_MAX         36750           // PWM_PERIOD_TICK * 12.25%  
+#define PWM_PULSE_DURATION_TICK_MIN                 225            // PWM_PERIOD_TICK * 2.25%  
+#define PWM_PULSE_DURATION_TICK_LOWER_LIMIT         252            // PWM_PERIOD_TICK * 2.25%  
+#define PWM_PULSE_DURATION_TICK_MIDDLE              725           // PWM_PERIOD_TICK * 7.25%  
+#define PWM_PULSE_DURATION_TICK_UPPER_LIMIT         1197           // PWM_PERIOD_TICK * 12.25%  
+#define PWM_PULSE_DURATION_TICK_MAX                 1225           // PWM_PERIOD_TICK * 12.25%  
 
-#define PWM_PULSE_DURATION_TICK_MINUS_81    8250          // -81 degree  
-#define PWM_PULSE_DURATION_TICK_MINUS_72    9750          // -72 degree  
-#define PWM_PULSE_DURATION_TICK_MINUS_63    11250          // -63 degree  
-#define PWM_PULSE_DURATION_TICK_MINUS_54    12750          // -54 degree  
-#define PWM_PULSE_DURATION_TICK_MINUS_45    14250          // -45 degree  
-#define PWM_PULSE_DURATION_TICK_MINUS_36    15750          // -36 degree  
-#define PWM_PULSE_DURATION_TICK_MINUS_27    17250          // -27 degree  
-#define PWM_PULSE_DURATION_TICK_MINUS_18    18750          // -18 degree 
-#define PWM_PULSE_DURATION_TICK_MINUS_9     20250          // -9 degree
+#define PWM_PULSE_DURATION_TICK_MINUS_81    275          // -81 degree  
+#define PWM_PULSE_DURATION_TICK_MINUS_72    325          // -72 degree  
+#define PWM_PULSE_DURATION_TICK_MINUS_63    375          // -63 degree  
+#define PWM_PULSE_DURATION_TICK_MINUS_54    425          // -54 degree  
+#define PWM_PULSE_DURATION_TICK_MINUS_45    475          // -45 degree  
+#define PWM_PULSE_DURATION_TICK_MINUS_36    525          // -36 degree  
+#define PWM_PULSE_DURATION_TICK_MINUS_27    575          // -27 degree  
+#define PWM_PULSE_DURATION_TICK_MINUS_18    625          // -18 degree 
+#define PWM_PULSE_DURATION_TICK_MINUS_9     675          // -9 degree
 
-#define PWM_PULSE_DURATION_TICK_9           23250          // 9 degree , 0000 1001
-#define PWM_PULSE_DURATION_TICK_9_MASK      0x08         
+#define PWM_PULSE_DURATION_TICK_9           775             // 9 degree , 0000 1001
+#define PWM_PULSE_DURATION_TICK_9_MASK      (uint32_t)0x00000008         
 
-#define PWM_PULSE_DURATION_TICK_18          24750          // 18 degree ,0001 0010
-#define PWM_PULSE_DURATION_TICK_18_MASK     0x12          
+#define PWM_PULSE_DURATION_TICK_18          825             // 18 degree ,0001 0010
+#define PWM_PULSE_DURATION_TICK_18_MASK     (uint32_t)0x00000010          
 
-#define PWM_PULSE_DURATION_TICK_27          26250          // 27 degree ,0001 1011 
-#define PWM_PULSE_DURATION_TICK_27_MASK     0x18           
+#define PWM_PULSE_DURATION_TICK_27          875             // 27 degree ,0001 1011 
+#define PWM_PULSE_DURATION_TICK_27_MASK     (uint32_t)0x00000018           
 
-#define PWM_PULSE_DURATION_TICK_36          27750          // 36 degree ,0010 0100 
-#define PWM_PULSE_DURATION_TICK_36_MASK     0x24 
+#define PWM_PULSE_DURATION_TICK_36          925             // 36 degree ,0010 0100 
+#define PWM_PULSE_DURATION_TICK_36_MASK     (uint32_t)0x00000020 
 
-#define PWM_PULSE_DURATION_TICK_45          29250          // 45 degree ,0010 1101 
-#define PWM_PULSE_DURATION_TICK_45_MASK     0x2c 
+#define PWM_PULSE_DURATION_TICK_45          975             // 45 degree ,0010 1101 
+#define PWM_PULSE_DURATION_TICK_45_MASK     (uint32_t)0x0000002c 
 
-#define PWM_PULSE_DURATION_TICK_54          30750          // 54 degree ,0011 0110 
-#define PWM_PULSE_DURATION_TICK_54_MASK     0x34 
+#define PWM_PULSE_DURATION_TICK_54          1025            // 54 degree ,0011 0110 
+#define PWM_PULSE_DURATION_TICK_54_MASK     (uint32_t)0x00000030
 
-#define PWM_PULSE_DURATION_TICK_63          32250          // 63 degree ,0011 1111
-#define PWM_PULSE_DURATION_TICK_63_MASK     0x3c
+#define PWM_PULSE_DURATION_TICK_63          1075            // 63 degree ,0011 1111
+#define PWM_PULSE_DURATION_TICK_63_MASK     (uint32_t)0x0000003c
 
-#define PWM_PULSE_DURATION_TICK_72          33750          // 72 degree ,0100 1000 
-#define PWM_PULSE_DURATION_TICK_72_MASK     0x48 
+#define PWM_PULSE_DURATION_TICK_72          1125            // 72 degree ,0100 1000 
+#define PWM_PULSE_DURATION_TICK_72_MASK     (uint32_t)0x00000040 
 
-#define PWM_PULSE_DURATION_TICK_81          35250          // 81 degree ,0101 0001 
-#define PWM_PULSE_DURATION_TICK_81_MASK     0x50 
+#define PWM_PULSE_DURATION_TICK_81          1175            // 81 degree ,0101 0001 
+#define PWM_PULSE_DURATION_TICK_81_MASK     (uint32_t)0x00000050 
 
 
 /* Definition for PWM Channel Pin (D6) : PE9 */
-#ifdef DEBUG
 #define PWM_TIM                             TIM1 // TIM1
 #define PWM_TIMx_CLK_ENABLE()               __HAL_RCC_TIM1_CLK_ENABLE()
 
 #define PWM_PERIOD                          20          //    20ms
-#define PWM_CLKSPEED                        15000000    //    15 MHz
-#define PWM_PERIOD_TICK                     (uint32_t)(666 - 1)          
-#define PWM_PULSE_DEFAULT_DURATION_TICK     (uint32_t)(PWM_PERIOD_TICK/2) 
-
-#define PWM_CHANNEL                         TIM_CHANNEL_1          
-//#define PWM_TIMx_CHANNEL_GPIO_PORT()        __HAL_RCC_GPIOB_CLK_ENABLE();
-//#define PWM_TIMx_GPIO_PORT_CHANNEL          GPIOB
-//#define PWM_TIMx_GPIO_PIN_CHANNEL           GPIO_PIN_4
-#define PWM_TIMx_CHANNEL_GPIO_PORT()        __HAL_RCC_GPIOE_CLK_ENABLE();
-#define PWM_TIMx_GPIO_PORT_CHANNEL          GPIOE
-#define PWM_TIMx_GPIO_PIN_CHANNEL           GPIO_PIN_9
-#define PWM_TIMx_GPIO_AF_CHANNEL            GPIO_AF1_TIM1
-
-#else
-
-#define PWM_TIM                             TIM1 // TIM1
-#define PWM_TIMx_CLK_ENABLE()               __HAL_RCC_TIM1_CLK_ENABLE()
-
-#define PWM_PERIOD                          20          //    20ms
-#define PWM_CLKSPEED                        15000000    //    15 MHz
-#define PWM_PERIOD_TICK                     (uint32_t)(PWM_PERIOD * PWM_CLKSPEED / 1000 )          
-#define PWM_PULSE_DEFAULT_DURATION_TICK     (uint32_t)21750          // PWM_PERIOD_TICK * 7.25%  
+#define PWM_CLKSPEED                        500000        //    CLKSPEED >= 500kHz , CLKSPEED <= 3200kHz
+#define PWM_PERIOD_TICK                     (uint32_t)((PWM_CLKSPEED / 1000)* PWM_PERIOD - 1) // 1 ms * PERIOD(ms)         
+#define PWM_PULSE_DEFAULT_DURATION_TICK     (uint32_t)(PWM_PULSE_DURATION_TICK_MIDDLE) 
 
 #define PWM_CHANNEL                         TIM_CHANNEL_1          
 #define PWM_TIMx_CHANNEL_GPIO_PORT()        __HAL_RCC_GPIOE_CLK_ENABLE();
 #define PWM_TIMx_GPIO_PORT_CHANNEL          GPIOE
 #define PWM_TIMx_GPIO_PIN_CHANNEL           GPIO_PIN_9
 #define PWM_TIMx_GPIO_AF_CHANNEL            GPIO_AF1_TIM1
-#endif /* DEBUG */
 
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
@@ -128,7 +109,7 @@ void s4527438_hal_pantilt_init(void) {
     HAL_GPIO_Init(PWM_TIMx_GPIO_PORT_CHANNEL, &GPIO_InitStruct);
 
     /* Calculate Prescaler */
-    uhPrescalerValue = (uint32_t)((SystemCoreClock/2) / PWM_CLKSPEED) - 1;
+    uhPrescalerValue = (uint32_t)((SystemCoreClock) / PWM_CLKSPEED) - 1;
 
     TimHandle.Instance = PWM_TIM;
     TimHandle.Init.Prescaler         = uhPrescalerValue;
@@ -187,83 +168,71 @@ void pantilt_angle_write(int type, int angle) {
             test_angle = 0;
         }
 
-        if( test_angle & PWM_PULSE_DURATION_TICK_81_MASK ) {
+        current_angle = angle;
+        if( ((test_angle & PWM_PULSE_DURATION_TICK_81_MASK)^PWM_PULSE_DURATION_TICK_81_MASK) == 0 ) {
             if( is_minus ) {
-                current_angle = -81;
                 sConfig.Pulse = PWM_PULSE_DURATION_TICK_MINUS_81;
             } else {
-                current_angle = 81;
                 sConfig.Pulse = PWM_PULSE_DURATION_TICK_81;
             }
-        } else if(test_angle & PWM_PULSE_DURATION_TICK_72_MASK) {
+        } else if( ((test_angle & PWM_PULSE_DURATION_TICK_72_MASK) ^ PWM_PULSE_DURATION_TICK_72_MASK) == 0) {
             if( is_minus ) {
-                current_angle = -72;
                 sConfig.Pulse = PWM_PULSE_DURATION_TICK_MINUS_72;
             } else {
-                current_angle = 72;
                 sConfig.Pulse = PWM_PULSE_DURATION_TICK_72;
             }
-        } else if(test_angle & PWM_PULSE_DURATION_TICK_63_MASK) {
+        } else if( ((test_angle & PWM_PULSE_DURATION_TICK_63_MASK) ^ PWM_PULSE_DURATION_TICK_63_MASK) == 0) {
             if( is_minus ) {
-                current_angle = -63;
                 sConfig.Pulse = PWM_PULSE_DURATION_TICK_MINUS_63;
             } else {
-                current_angle = 63;
                 sConfig.Pulse = PWM_PULSE_DURATION_TICK_63;
             }
-        } else if(test_angle & PWM_PULSE_DURATION_TICK_54_MASK) {
+        } else if( ((test_angle & PWM_PULSE_DURATION_TICK_54_MASK) ^ PWM_PULSE_DURATION_TICK_54_MASK) == 0) {
             if( is_minus ) {
-                current_angle = -54;
                 sConfig.Pulse = PWM_PULSE_DURATION_TICK_MINUS_54;
             } else {
-                current_angle = 54;
                 sConfig.Pulse = PWM_PULSE_DURATION_TICK_54;
             }
-        } else if(test_angle & PWM_PULSE_DURATION_TICK_45_MASK) {
+        } else if( ((test_angle & PWM_PULSE_DURATION_TICK_45_MASK) ^ PWM_PULSE_DURATION_TICK_45_MASK) == 0) {
             if( is_minus ) {
-                current_angle = -45;
                 sConfig.Pulse = PWM_PULSE_DURATION_TICK_MINUS_45;
             } else {
-                current_angle = 45;
                 sConfig.Pulse = PWM_PULSE_DURATION_TICK_45;
             }
-        } else if(test_angle & PWM_PULSE_DURATION_TICK_36_MASK) {
+        } else if( ((test_angle & PWM_PULSE_DURATION_TICK_36_MASK)^PWM_PULSE_DURATION_TICK_36_MASK) == 0) {
             if( is_minus ) {
-                current_angle = -36;
                 sConfig.Pulse = PWM_PULSE_DURATION_TICK_MINUS_36;
             } else {
-                current_angle = 36;
                 sConfig.Pulse = PWM_PULSE_DURATION_TICK_36;
             }
-        } else if(test_angle & PWM_PULSE_DURATION_TICK_27_MASK) {
+        } else if( ((test_angle & PWM_PULSE_DURATION_TICK_27_MASK) ^ PWM_PULSE_DURATION_TICK_27_MASK) == 0) {
             if( is_minus ) {
-                current_angle = -27;
                 sConfig.Pulse = PWM_PULSE_DURATION_TICK_MINUS_27;
             } else {
-                current_angle = 27;
                 sConfig.Pulse = PWM_PULSE_DURATION_TICK_27;
             }
-        } else if(test_angle & PWM_PULSE_DURATION_TICK_18_MASK) {
+        } else if( ((test_angle & PWM_PULSE_DURATION_TICK_18_MASK) ^ PWM_PULSE_DURATION_TICK_18_MASK) == 0) {
             if( is_minus ) {
-                current_angle = -18;
                 sConfig.Pulse = PWM_PULSE_DURATION_TICK_MINUS_18;
             } else {
-                current_angle = 18;
                 sConfig.Pulse = PWM_PULSE_DURATION_TICK_18;
             }
-        } else if(test_angle & PWM_PULSE_DURATION_TICK_9_MASK) {
+        } else if( ((test_angle & PWM_PULSE_DURATION_TICK_9_MASK) ^ PWM_PULSE_DURATION_TICK_9_MASK) == 0) {
             if( is_minus ) {
-                current_angle = 9;
                 sConfig.Pulse = PWM_PULSE_DURATION_TICK_MINUS_9;
             } else {
-                current_angle = -9;
                 sConfig.Pulse = PWM_PULSE_DURATION_TICK_9;
             }
         } else {
-            current_angle = 0;
             sConfig.Pulse = PWM_PULSE_DEFAULT_DURATION_TICK;
         }
 
+        // Avoid hurt servo
+        if( sConfig.Pulse > PWM_PULSE_DURATION_TICK_UPPER_LIMIT ) {
+            sConfig.Pulse = PWM_PULSE_DURATION_TICK_81;
+        } else if ( sConfig.Pulse < PWM_PULSE_DURATION_TICK_LOWER_LIMIT ) {
+            sConfig.Pulse = PWM_PULSE_DURATION_TICK_MINUS_81;
+        }
         if (HAL_TIM_PWM_Stop(&TimHandle, PWM_CHANNEL) != HAL_OK)
         {
             /* PWM Generation Error */
