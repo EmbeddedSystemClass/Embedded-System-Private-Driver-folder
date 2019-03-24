@@ -28,5 +28,6 @@ void s4527438_hal_atimer_period_set(int period);
 void s4527438_hal_atimer_init_pin();
 
 #define s4527438_hal_atimer_timer_read() {return atimerCounterVal;} 
+#define S4527438_HAL_CLOCK_LOWER_BOUND                      123 // 8000000(system core clock/2) / 65535(16-bit bus)
 
 #endif /* S4527438_HAL_ATIMER_H_ */
