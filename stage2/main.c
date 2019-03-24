@@ -17,6 +17,7 @@
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
 #define MAIN_LOOP_POLLING_DELAY         125 //500 ms
+
 #define METRONOME_MODE                  1
 #define NORMAL_MODE                     0 
 
@@ -56,13 +57,14 @@ int main(void)  {
                 case 'n':
                     cur_mode = NORMAL_MODE;
                     break;
-                default:
-                    if( cur_mode == NORMAL_MODE ) {
-                        handle_normal_mode(RxChar);
-                    } else {
-                        handle_metronome_mode(RxChar);
-                    }
-                    break;
+            }
+#ifdef DEBUG
+            debug_printf(" cur_mode = %s\n", (cur_mode == NORMAL_MODE)?"Normal":"Metronome");
+#endif
+            if( cur_mode == NORMAL_MODE ) {
+                handle_normal_mode(RxChar);
+            } else {
+                handle_metronome_mode(RxChar);
             }
 
 		    HAL_Delay(MAIN_LOOP_POLLING_DELAY);		//Delay for 2.5s
@@ -118,10 +120,16 @@ static void handle_normal_mode(int cmd) {
         case 'p':
             cur_angle = s4527438_hal_pantilt_pan_read();
             s4527438_hal_pantilt_pan_write(++cur_angle);
+#ifdef DEBUG
+            debug_printf(" cur_angle = %d\n", cur_angle);
+#endif
             break;
         case 'n':
             cur_angle = s4527438_hal_pantilt_pan_read();
             s4527438_hal_pantilt_pan_write(--cur_angle);
+#ifdef DEBUG
+            debug_printf(" cur_angle = %d\n", cur_angle);
+#endif
             break;
     }
 
