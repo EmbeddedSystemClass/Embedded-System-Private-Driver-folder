@@ -21,16 +21,12 @@
 #ifdef S4527438_HAL_ATIMER_CONFIG
 #include "s4527438_hal_atimer_config.h"
 #endif
+
+
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
 #define INT_UPPER_BOUNDARY  0x7FFFU
 #define UNSIGNED_INT_UPPER_BOUNDARY  0xFFFFU
-/* D10 : DPORT , 14 pin */
-#define     S4527438_HAL_ATIMER_PIN         GPIO_PIN_14
-#define     S4527438_HAL_ATIMER_PINPORT     GPIOD
-#define     S4527438_HAL_ATIMER_PINCLK()    __GPIOD_CLK_ENABLE()
-#define     S4527438_HAL_ATIMER_PERIOD      2  //    2ms
-#define     S4527438_HAL_ATIMER_CLKSPEED    25000 //    25 kHz
 
 #define     ATIMER_TIM                             TIM3 // TIM3
 #define     ATIMER_TIMx_CLK_ENABLE()               __HAL_RCC_TIM3_CLK_ENABLE()
@@ -114,15 +110,22 @@ void s4527438_hal_atimer_clkspeed_set(int frequency) {
     TimHandle.Init.Period = test_result_period;
     TimHandle.Init.Prescaler = atimerPrescalerVal;   //Set presale value
 
+#ifdef DEBUG
     debug_printf("atimerClkspeedVal = %d\n", atimerClkspeedVal);
     debug_printf("atimerPrescalerVal = %d\n", atimerPrescalerVal);
+#endif
 
     HAL_TIM_Base_Stop_IT(&TimHandle);
+    HAL_TIM_Base_Init(&TimHandle);
     HAL_TIM_Base_Start_IT(&TimHandle);
 }
 
 void s4527438_hal_atimer_period_set(int period) {
     uint32_t test_result_period = 0 ;
+
+    if( period < 0 ) {
+        return;
+    }
 
     test_result_period = (uint32_t)(period * atimerClkspeedVal / 1000 - 1);
 
@@ -135,10 +138,13 @@ void s4527438_hal_atimer_period_set(int period) {
 
     atimerCounterValMax = (uint32_t)INT_UPPER_BOUNDARY / atimerPeriodVal;
 
+#ifdef DEBUG
     debug_printf("atimerClkspeedVal = %d\n", atimerClkspeedVal);
-    debug_printf("atimerPrescalerVal = %d\n", atimerPeriodVal);
+    debug_printf("atimerPeriodVal = %d\n", atimerPeriodVal);
+#endif
 
     HAL_TIM_Base_Stop_IT(&TimHandle);
+    HAL_TIM_Base_Init(&TimHandle);
     HAL_TIM_Base_Start_IT(&TimHandle);
 }
 

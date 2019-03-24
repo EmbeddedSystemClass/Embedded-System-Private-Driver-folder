@@ -27,7 +27,14 @@ void s4527438_hal_atimer_clkspeed_set(int frequency);
 void s4527438_hal_atimer_period_set(int period);
 void s4527438_hal_atimer_init_pin();
 
-#define s4527438_hal_atimer_timer_read() {return atimerCounterVal;} 
+#define s4527438_hal_atimer_timer_read()    (atimerCounterVal)
 #define S4527438_HAL_CLOCK_LOWER_BOUND                      123 // 8000000(system core clock/2) / 65535(16-bit bus)
+
+/* D10 : DPORT , 14 pin */
+#define     S4527438_HAL_ATIMER_PIN         GPIO_PIN_14
+#define     S4527438_HAL_ATIMER_PINPORT     GPIOD
+#define     S4527438_HAL_ATIMER_PINCLK()    __GPIOD_CLK_ENABLE()
+#define     S4527438_HAL_ATIMER_PERIOD      2  //    2ms
+#define     S4527438_HAL_ATIMER_CLKSPEED    25000 //    25 kHz
 
 #endif /* S4527438_HAL_ATIMER_H_ */
