@@ -42,16 +42,16 @@ typedef enum
 
 #define MAIN_LOOP_POLLING_DELAY        (METRONOME_PERIOD_LOWER/(METRONOME_CHANGE_TOTAL_TICK_COUNT_PER_TIMER_PERIOD*5)) //100 ms
 
-#define METRONOME_LED_SLOT0_ANGLE_BEGIN      0
-#define METRONOME_LED_SLOT1_ANGLE_BEGIN      8
-#define METRONOME_LED_SLOT2_ANGLE_BEGIN      16
-#define METRONOME_LED_SLOT3_ANGLE_BEGIN      24
-#define METRONOME_LED_SLOT4_ANGLE_BEGIN      32
-#define METRONOME_LED_SLOT5_ANGLE_BEGIN      40
-#define METRONOME_LED_SLOT6_ANGLE_BEGIN      48
-#define METRONOME_LED_SLOT7_ANGLE_BEGIN      56
-#define METRONOME_LED_SLOT8_ANGLE_BEGIN      64
-#define METRONOME_LED_SLOT9_ANGLE_BEGIN      72
+#define METRONOME_LED_SLOT0_ANGLE_BEGIN      -32
+#define METRONOME_LED_SLOT1_ANGLE_BEGIN      -24
+#define METRONOME_LED_SLOT2_ANGLE_BEGIN      -16
+#define METRONOME_LED_SLOT3_ANGLE_BEGIN      -8
+#define METRONOME_LED_SLOT4_ANGLE_BEGIN      0
+#define METRONOME_LED_SLOT5_ANGLE_BEGIN      8
+#define METRONOME_LED_SLOT6_ANGLE_BEGIN      16
+#define METRONOME_LED_SLOT7_ANGLE_BEGIN      24
+#define METRONOME_LED_SLOT8_ANGLE_BEGIN      32
+#define METRONOME_LED_SLOT9_ANGLE_BEGIN      40
 
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
@@ -115,10 +115,14 @@ int main(void)  {
         }
 
         if( cur_mode == METRONOME_MODE ) {
-            if( ( s4527438_hal_atimer_timer_read() - metronome_cur_change_tick_count) >= METRONOME_CHANGE_TICK_COUNT_THRESHOLD ) {
+            int temp_tick_count = s4527438_hal_atimer_timer_read();
+
+            if( temp_tick_count < metronome_cur_change_tick_count ) {
+                metronome_cur_change_tick_count = 0;
+            }
+            if( ( temp_tick_count - metronome_cur_change_tick_count) >= METRONOME_CHANGE_TICK_COUNT_THRESHOLD ) {
                 metronome_polling_update_angle();
                 metronome_polling_update_LEDBAR(metronome_cur_angle);
-
                 metronome_cur_change_tick_count = s4527438_hal_atimer_timer_read();
             }
         }
@@ -248,25 +252,25 @@ static void metronome_polling_update_angle(void) {
 }
 
 static void metronome_polling_update_LEDBAR(int target_angle) {
-    if( target_angle < METRONOME_LED_SLOT1_ANGLE_BEGIN ) {
+    if( target_angle < METRONOME_LED_SLOT0_ANGLE_BEGIN ) {
         s4527438_hal_lta1000g_write(LEDBAR_0_LEDMASK);
-    } else if( target_angle >= METRONOME_LED_SLOT1_ANGLE_BEGIN && target_angle < METRONOME_LED_SLOT1_ANGLE_BEGIN ) {
+    } else if( target_angle >= METRONOME_LED_SLOT0_ANGLE_BEGIN && target_angle < METRONOME_LED_SLOT1_ANGLE_BEGIN ) {
         s4527438_hal_lta1000g_write(LEDBAR_1_LEDMASK);
-    } else if( target_angle >= METRONOME_LED_SLOT2_ANGLE_BEGIN && target_angle < METRONOME_LED_SLOT3_ANGLE_BEGIN ) {
+    } else if( target_angle >= METRONOME_LED_SLOT1_ANGLE_BEGIN && target_angle < METRONOME_LED_SLOT2_ANGLE_BEGIN ) {
         s4527438_hal_lta1000g_write(LEDBAR_2_LEDMASK);
-    } else if( target_angle >= METRONOME_LED_SLOT3_ANGLE_BEGIN && target_angle < METRONOME_LED_SLOT4_ANGLE_BEGIN ) {
+    } else if( target_angle >= METRONOME_LED_SLOT2_ANGLE_BEGIN && target_angle < METRONOME_LED_SLOT3_ANGLE_BEGIN ) {
         s4527438_hal_lta1000g_write(LEDBAR_3_LEDMASK);
-    } else if( target_angle >= METRONOME_LED_SLOT4_ANGLE_BEGIN && target_angle < METRONOME_LED_SLOT5_ANGLE_BEGIN ) {
+    } else if( target_angle >= METRONOME_LED_SLOT3_ANGLE_BEGIN && target_angle < METRONOME_LED_SLOT4_ANGLE_BEGIN ) {
         s4527438_hal_lta1000g_write(LEDBAR_4_LEDMASK);
-    } else if( target_angle >= METRONOME_LED_SLOT5_ANGLE_BEGIN && target_angle < METRONOME_LED_SLOT6_ANGLE_BEGIN ) {
+    } else if( target_angle >= METRONOME_LED_SLOT4_ANGLE_BEGIN && target_angle < METRONOME_LED_SLOT5_ANGLE_BEGIN ) {
         s4527438_hal_lta1000g_write(LEDBAR_5_LEDMASK);
-    } else if( target_angle >= METRONOME_LED_SLOT6_ANGLE_BEGIN && target_angle < METRONOME_LED_SLOT7_ANGLE_BEGIN ) {
+    } else if( target_angle >= METRONOME_LED_SLOT5_ANGLE_BEGIN && target_angle < METRONOME_LED_SLOT6_ANGLE_BEGIN ) {
         s4527438_hal_lta1000g_write(LEDBAR_6_LEDMASK);
-    } else if( target_angle >= METRONOME_LED_SLOT7_ANGLE_BEGIN && target_angle < METRONOME_LED_SLOT8_ANGLE_BEGIN ) {
+    } else if( target_angle >= METRONOME_LED_SLOT6_ANGLE_BEGIN && target_angle < METRONOME_LED_SLOT7_ANGLE_BEGIN ) {
         s4527438_hal_lta1000g_write(LEDBAR_7_LEDMASK);
-    } else if( target_angle >= METRONOME_LED_SLOT8_ANGLE_BEGIN && target_angle < METRONOME_LED_SLOT9_ANGLE_BEGIN ) {
+    } else if( target_angle >= METRONOME_LED_SLOT7_ANGLE_BEGIN && target_angle < METRONOME_LED_SLOT8_ANGLE_BEGIN ) {
         s4527438_hal_lta1000g_write(LEDBAR_8_LEDMASK);
-    } else if( target_angle >= METRONOME_LED_SLOT9_ANGLE_BEGIN ) {
+    } else if( target_angle >= METRONOME_LED_SLOT8_ANGLE_BEGIN ) {
         s4527438_hal_lta1000g_write(LEDBAR_9_LEDMASK);
     }
 }
