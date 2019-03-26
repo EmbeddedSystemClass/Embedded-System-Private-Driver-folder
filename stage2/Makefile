@@ -22,6 +22,9 @@ OBJS=$(SRCS:.c=.o)
 .PHONY: $(shell mkdir -p obj) lib proj all depend
 all: proj
 
+#include LED makefile
+include /home/csse3010/csse3010/mylib/lta1000g/filelist.mk
+
 #include atimer makefile
 include /home/csse3010/csse3010/mylib/atimer/filelist.mk
 

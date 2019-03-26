@@ -11,6 +11,7 @@
 #include "board.h"
 #include "stm32f4xx_hal.h"
 #include "debug_printf.h"
+#include "s4527438_hal_lta1000g.h"
 #include "s4527438_hal_atimer.h"
 #include "s4527438_hal_pantilt.h"
 
@@ -41,6 +42,17 @@ typedef enum
 
 #define MAIN_LOOP_POLLING_DELAY        (METRONOME_PERIOD_LOWER/(METRONOME_CHANGE_TOTAL_TICK_COUNT_PER_TIMER_PERIOD*5)) //100 ms
 
+#define METRONOME_LED_SLOT0_ANGLE_BEGIN      0
+#define METRONOME_LED_SLOT1_ANGLE_BEGIN      8
+#define METRONOME_LED_SLOT2_ANGLE_BEGIN      16
+#define METRONOME_LED_SLOT3_ANGLE_BEGIN      24
+#define METRONOME_LED_SLOT4_ANGLE_BEGIN      32
+#define METRONOME_LED_SLOT5_ANGLE_BEGIN      40
+#define METRONOME_LED_SLOT6_ANGLE_BEGIN      48
+#define METRONOME_LED_SLOT7_ANGLE_BEGIN      56
+#define METRONOME_LED_SLOT8_ANGLE_BEGIN      64
+#define METRONOME_LED_SLOT9_ANGLE_BEGIN      72
+
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
 static int atimer_period_ms = S4527438_HAL_ATIMER_PERIOD;
@@ -55,9 +67,10 @@ static METRONOME_shift_pattern_TypeEnum metronome_shift_pattern = ANGLE_INCREASE
 static void handle_normal_mode(int cmd);
 static void handle_metronome_mode(int cmd);
 
-static void metronome_init(void);
+static void metronome_mode_init(void);
+static void normal_mode_init(void);
 static void metronome_polling_update_angle(void);
-static void metronome_polling_update_LEDBAR(void);
+static void metronome_polling_update_LEDBAR(int angle);
 
 void Hardware_init(void);
 
@@ -84,10 +97,11 @@ int main(void)  {
                 case 'm':
                     cur_mode = METRONOME_MODE;
 
-                    metronome_init();
+                    metronome_mode_init();
                     break;
                 case 'n':
                     cur_mode = NORMAL_MODE;
+                    normal_mode_init();
                     break;
             }
 #ifdef DEBUG
@@ -103,7 +117,7 @@ int main(void)  {
         if( cur_mode == METRONOME_MODE ) {
             if( ( s4527438_hal_atimer_timer_read() - metronome_cur_change_tick_count) >= METRONOME_CHANGE_TICK_COUNT_THRESHOLD ) {
                 metronome_polling_update_angle();
-                metronome_polling_update_LEDBAR();
+                metronome_polling_update_LEDBAR(metronome_cur_angle);
 
                 metronome_cur_change_tick_count = s4527438_hal_atimer_timer_read();
             }
@@ -160,6 +174,7 @@ static void handle_normal_mode(int cmd) {
             cur_angle = s4527438_hal_pantilt_pan_read();
             s4527438_hal_pantilt_pan_write(++cur_angle);
 #ifdef DEBUG
+            metronome_polling_update_LEDBAR(cur_angle);
             debug_printf(" cur_angle = %d\n", cur_angle);
 #endif
             break;
@@ -167,6 +182,7 @@ static void handle_normal_mode(int cmd) {
             cur_angle = s4527438_hal_pantilt_pan_read();
             s4527438_hal_pantilt_pan_write(--cur_angle);
 #ifdef DEBUG
+            metronome_polling_update_LEDBAR(cur_angle);
             debug_printf(" cur_angle = %d\n", cur_angle);
 #endif
             break;
@@ -191,7 +207,18 @@ static void handle_metronome_mode(int cmd) {
     }
 }
 
-static void metronome_init(void) {
+static void normal_mode_init(void) {
+    int cur_angle = 0;
+
+    s4527438_hal_atimer_clkspeed_set(atimer_clk);
+    s4527438_hal_atimer_period_set(atimer_period_ms);
+    metronome_polling_update_LEDBAR(LEDBAR_LED_ALL_ON_MASK^LEDBAR_LED_ALL_ON_MASK);
+
+    cur_angle = s4527438_hal_pantilt_pan_read();
+    s4527438_hal_pantilt_pan_write(cur_angle);
+}
+
+static void metronome_mode_init(void) {
     // Init setting
     metronome_shift_pattern = ANGLE_INCREASE;
     metronome_cur_period_ms = METRONOME_PERIOD_LOWER;
@@ -200,10 +227,11 @@ static void metronome_init(void) {
 
     s4527438_hal_atimer_clkspeed_set(METRONOME_FREQ_LOWER_BOUND);
     s4527438_hal_atimer_period_set(metronome_cur_period_ms/METRONOME_CHANGE_TOTAL_TICK_COUNT_PER_TIMER_PERIOD);
+    metronome_polling_update_LEDBAR(metronome_cur_angle);
+    s4527438_hal_pantilt_pan_write(metronome_cur_angle);
 }
 
 static void metronome_polling_update_angle(void) {
-    /* Check is joystick triggered*/
     if( metronome_cur_angle <= METRONOME_ANGLE_LOWER ) {
         metronome_shift_pattern = ANGLE_INCREASE;
     } else if( metronome_cur_angle >= METRONOME_ANGLE_UPPER ) {
@@ -219,7 +247,28 @@ static void metronome_polling_update_angle(void) {
     }
 }
 
-static void metronome_polling_update_LEDBAR(void) {
+static void metronome_polling_update_LEDBAR(int target_angle) {
+    if( target_angle < METRONOME_LED_SLOT1_ANGLE_BEGIN ) {
+        s4527438_hal_lta1000g_write(LEDBAR_0_LEDMASK);
+    } else if( target_angle >= METRONOME_LED_SLOT1_ANGLE_BEGIN && target_angle < METRONOME_LED_SLOT1_ANGLE_BEGIN ) {
+        s4527438_hal_lta1000g_write(LEDBAR_1_LEDMASK);
+    } else if( target_angle >= METRONOME_LED_SLOT2_ANGLE_BEGIN && target_angle < METRONOME_LED_SLOT3_ANGLE_BEGIN ) {
+        s4527438_hal_lta1000g_write(LEDBAR_2_LEDMASK);
+    } else if( target_angle >= METRONOME_LED_SLOT3_ANGLE_BEGIN && target_angle < METRONOME_LED_SLOT4_ANGLE_BEGIN ) {
+        s4527438_hal_lta1000g_write(LEDBAR_3_LEDMASK);
+    } else if( target_angle >= METRONOME_LED_SLOT4_ANGLE_BEGIN && target_angle < METRONOME_LED_SLOT5_ANGLE_BEGIN ) {
+        s4527438_hal_lta1000g_write(LEDBAR_4_LEDMASK);
+    } else if( target_angle >= METRONOME_LED_SLOT5_ANGLE_BEGIN && target_angle < METRONOME_LED_SLOT6_ANGLE_BEGIN ) {
+        s4527438_hal_lta1000g_write(LEDBAR_5_LEDMASK);
+    } else if( target_angle >= METRONOME_LED_SLOT6_ANGLE_BEGIN && target_angle < METRONOME_LED_SLOT7_ANGLE_BEGIN ) {
+        s4527438_hal_lta1000g_write(LEDBAR_6_LEDMASK);
+    } else if( target_angle >= METRONOME_LED_SLOT7_ANGLE_BEGIN && target_angle < METRONOME_LED_SLOT8_ANGLE_BEGIN ) {
+        s4527438_hal_lta1000g_write(LEDBAR_7_LEDMASK);
+    } else if( target_angle >= METRONOME_LED_SLOT8_ANGLE_BEGIN && target_angle < METRONOME_LED_SLOT9_ANGLE_BEGIN ) {
+        s4527438_hal_lta1000g_write(LEDBAR_8_LEDMASK);
+    } else if( target_angle >= METRONOME_LED_SLOT9_ANGLE_BEGIN ) {
+        s4527438_hal_lta1000g_write(LEDBAR_9_LEDMASK);
+    }
 }
 
 /**
@@ -228,6 +277,7 @@ static void metronome_polling_update_LEDBAR(void) {
   * @retval None
   */
 void Hardware_init(void) {
+    s4527438_hal_lta1000g_init();
     s4527438_hal_atimer_init_pin();
     s4527438_hal_atimer_init();
     s4527438_hal_pantilt_init();
