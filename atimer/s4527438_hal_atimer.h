@@ -1,15 +1,15 @@
 /** 
  **************************************************************
- * @file mylib/sxxxxxx_mylib_template.h
- * @author MyName - MyStudent ID
- * @date 22022018
- * @brief mylib template driver
- * REFERENCE: DON'T JUST COPY THIS BLINDLY.pdf 
+ * @file mylib/s4527438_hal_atimer.h
+ * @author KO-CHEN CHI - s4527438
+ * @date 26032019
+ * @brief mylib atimer driver
+ * REFERENCE: 
  ***************************************************************
  * EXTERNAL FUNCTIONS 
  ***************************************************************
- * sxxxxxx_mylib_template_init() - intialise mylib template driver
- * sxxxxxx_mylib_template_set() - set mylib template driver 
+ * s4527438_hal_atimer_init(void) - intialise mylib template driver
+ * s4527438_hal_atimer_timer_getms(void) - set mylib template driver 
  *************************************************************** 
  */
 

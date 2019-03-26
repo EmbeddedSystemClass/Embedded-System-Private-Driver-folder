@@ -1,15 +1,13 @@
- /** 
+/** 
  **************************************************************
  * @file mylib/s4527438_hal_atimer.c
- * @author MyName - s4527438
- * @date 20032019
- * @brief mylib template driver
- * REFERENCE: DON'T JUST COPY THIS BLINDLY.pdf 
+ * @author KO-CHEN CHI - s4527438
+ * @date 26032019
+ * @brief mylib atimer driver
+ * REFERENCE: 
  ***************************************************************
  * EXTERNAL FUNCTIONS 
  ***************************************************************
- * sxxxxxx_mylib_template_init() - intialise mylib template driver
- * sxxxxxx_mylib_template_set() - set mylib template driver 
  *************************************************************** 
  */
 /* Includes ------------------------------------------------------------------*/
