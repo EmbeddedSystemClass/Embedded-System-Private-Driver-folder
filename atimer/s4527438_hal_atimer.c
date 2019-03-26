@@ -100,6 +100,10 @@ void s4527438_hal_atimer_clkspeed_set(int frequency) {
     }
     test_result_period = (uint32_t)(atimerPeriodVal * frequency / 1000 - 1);
 
+    if( test_result_period < 1 ) {
+        return;
+    }
+
     if( test_result_period > UNSIGNED_INT_UPPER_BOUNDARY ) {
         return;
     }
@@ -123,11 +127,15 @@ void s4527438_hal_atimer_clkspeed_set(int frequency) {
 void s4527438_hal_atimer_period_set(int period) {
     uint32_t test_result_period = 0 ;
 
-    if( period < 0 ) {
+    if( period < 1 ) {
         return;
     }
 
     test_result_period = (uint32_t)(period * atimerClkspeedVal / 1000 - 1);
+
+    if( test_result_period < 1 ) {
+        return;
+    }
 
     if( test_result_period > UNSIGNED_INT_UPPER_BOUNDARY ) {
         return;
