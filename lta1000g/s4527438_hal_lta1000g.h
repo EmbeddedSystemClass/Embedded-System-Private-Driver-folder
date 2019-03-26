@@ -22,65 +22,65 @@
 /**********************  BOARD LEDs  *****************************/
 
 //LED definitions (Left ~ Right : D25 ~ D16)
-#define LEDBAR_0_LED                        0   //D25 : PB4
+#define LEDBAR_0_LED                        0   //D16 : PC6
 #define LEDBAR_0_LEDMASK                    1 << LEDBAR_0_LED
-#define LEDBAR_0_LED_PIN                    GPIO_PIN_4
-#define LEDBAR_0_LED_GPIO_PORT              GPIOB
-#define __LEDBAR_0_LED_GPIO_CLK()           __GPIOB_CLK_ENABLE()
+#define LEDBAR_0_LED_PIN                    GPIO_PIN_6
+#define LEDBAR_0_LED_GPIO_PORT              GPIOC
+#define __LEDBAR_0_LED_GPIO_CLK()           __GPIOC_CLK_ENABLE()
 
-#define LEDBAR_1_LED                        1  //D24 : PA4
+#define LEDBAR_1_LED                        1  //D17 : PB15
 #define LEDBAR_1_LEDMASK                    1 << LEDBAR_1_LED
-#define LEDBAR_1_LED_PIN                    GPIO_PIN_4
-#define LEDBAR_1_LED_GPIO_PORT              GPIOA
-#define __LEDBAR_1_LED_GPIO_CLK()           __GPIOA_CLK_ENABLE()
+#define LEDBAR_1_LED_PIN                    GPIO_PIN_15
+#define LEDBAR_1_LED_GPIO_PORT              GPIOB
+#define __LEDBAR_1_LED_GPIO_CLK()           __GPIOB_CLK_ENABLE()
 
-#define LEDBAR_2_LED                        2   //D23 : PB3
+#define LEDBAR_2_LED                        2   //D18 : PB13
 #define LEDBAR_2_LEDMASK                    1 << LEDBAR_2_LED
-#define LEDBAR_2_LED_PIN                    GPIO_PIN_3
+#define LEDBAR_2_LED_PIN                    GPIO_PIN_13
 #define LEDBAR_2_LED_GPIO_PORT              GPIOB
 #define __LEDBAR_2_LED_GPIO_CLK()           __GPIOB_CLK_ENABLE()
 
-#define LEDBAR_3_LED                        3   //D22 : PB5
+#define LEDBAR_3_LED                        3   //D19 : PB12
 #define LEDBAR_3_LEDMASK                    1 << LEDBAR_3_LED
-#define LEDBAR_3_LED_PIN                    GPIO_PIN_5
+#define LEDBAR_3_LED_PIN                    GPIO_PIN_12
 #define LEDBAR_3_LED_GPIO_PORT              GPIOB
 #define __LEDBAR_3_LED_GPIO_CLK()           __GPIOB_CLK_ENABLE()
 
-#define LEDBAR_4_LED                        4   //D21 : PC7
+#define LEDBAR_4_LED                        4   //D20 : PA15
 #define LEDBAR_4_LEDMASK                    1 << LEDBAR_4_LED
-#define LEDBAR_4_LED_PIN                    GPIO_PIN_7
-#define LEDBAR_4_LED_GPIO_PORT              GPIOC
-#define __LEDBAR_4_LED_GPIO_CLK()           __GPIOC_CLK_ENABLE()
+#define LEDBAR_4_LED_PIN                    GPIO_PIN_15
+#define LEDBAR_4_LED_GPIO_PORT              GPIOA
+#define __LEDBAR_4_LED_GPIO_CLK()           __GPIOA_CLK_ENABLE()
 
-#define LEDBAR_5_LED                        5   //D20 : PA15
+#define LEDBAR_5_LED                        5   //D21 : PC7
 #define LEDBAR_5_LEDMASK                    1 << LEDBAR_5_LED
-#define LEDBAR_5_LED_PIN                    GPIO_PIN_15
-#define LEDBAR_5_LED_GPIO_PORT              GPIOA
-#define __LEDBAR_5_LED_GPIO_CLK()           __GPIOA_CLK_ENABLE()
+#define LEDBAR_5_LED_PIN                    GPIO_PIN_7
+#define LEDBAR_5_LED_GPIO_PORT              GPIOC
+#define __LEDBAR_5_LED_GPIO_CLK()           __GPIOC_CLK_ENABLE()
 
-#define LEDBAR_6_LED                        6   //D19 : PB12
+#define LEDBAR_6_LED                        6   //D22 : PB5
 #define LEDBAR_6_LEDMASK                    1 << LEDBAR_6_LED
-#define LEDBAR_6_LED_PIN                    GPIO_PIN_12
+#define LEDBAR_6_LED_PIN                    GPIO_PIN_5
 #define LEDBAR_6_LED_GPIO_PORT              GPIOB
 #define __LEDBAR_6_LED_GPIO_CLK()           __GPIOB_CLK_ENABLE()
 
-#define LEDBAR_7_LED                        7   //D18 : PB13
+#define LEDBAR_7_LED                        7   //D23 : PB3
 #define LEDBAR_7_LEDMASK                    1 << LEDBAR_7_LED
-#define LEDBAR_7_LED_PIN                    GPIO_PIN_13
+#define LEDBAR_7_LED_PIN                    GPIO_PIN_3
 #define LEDBAR_7_LED_GPIO_PORT              GPIOB
 #define __LEDBAR_7_LED_GPIO_CLK()           __GPIOB_CLK_ENABLE()
 
-#define LEDBAR_8_LED                        8   //D17 : PB15
+#define LEDBAR_8_LED                        8   //D24 : PA4
 #define LEDBAR_8_LEDMASK                    1 << LEDBAR_8_LED
-#define LEDBAR_8_LED_PIN                    GPIO_PIN_15
-#define LEDBAR_8_LED_GPIO_PORT              GPIOB
-#define __LEDBAR_8_LED_GPIO_CLK()           __GPIOB_CLK_ENABLE()
+#define LEDBAR_8_LED_PIN                    GPIO_PIN_4
+#define LEDBAR_8_LED_GPIO_PORT              GPIOA
+#define __LEDBAR_8_LED_GPIO_CLK()           __GPIOA_CLK_ENABLE()
 
-#define LEDBAR_9_LED                        9   //D16 : PC6
+#define LEDBAR_9_LED                        9   //D25 : PB4
 #define LEDBAR_9_LEDMASK                    1 << LEDBAR_9_LED
-#define LEDBAR_9_LED_PIN                    GPIO_PIN_6
-#define LEDBAR_9_LED_GPIO_PORT              GPIOC
-#define __LEDBAR_9_LED_GPIO_CLK()           __GPIOC_CLK_ENABLE()
+#define LEDBAR_9_LED_PIN                    GPIO_PIN_4
+#define LEDBAR_9_LED_GPIO_PORT              GPIOB
+#define __LEDBAR_9_LED_GPIO_CLK()           __GPIOB_CLK_ENABLE()
 
 #define LEDBAR_LED_START                    LEDBAR_0_LED
 #define LEDBAR_LED_END                      LEDBAR_9_LED
