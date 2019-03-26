@@ -15,21 +15,49 @@
 #include "s4527438_hal_pantilt.h"
 
 /* Private typedef -----------------------------------------------------------*/
+typedef enum
+{
+    ANGLE_INCREASE = 0,
+    ANGLE_DECREASE 
+} METRONOME_shift_pattern_TypeEnum;
 /* Private define ------------------------------------------------------------*/
-#define MAIN_LOOP_POLLING_DELAY         125 //500 ms
 
 #define METRONOME_MODE                  1
 #define NORMAL_MODE                     0 
 
+#define METRONOME_PERIOD_LOWER          2000 // 2 s
+#define METRONOME_PERIOD_UPPER          20000 // 20 s
+
+#define METRONOME_COUNT_PER_METRONOME_INTERVAL                      10   // 10
+#define METRONOME_CHANGE_TICK_COUNT_THRESHOLD                       10   // 10
+#define METRONOME_CHANGE_TICK_COUNT_THRESHOLD_ANGLE                 (80/METRONOME_COUNT_PER_METRONOME_INTERVAL)   // 10
+
+#define METRONOME_CHANGE_TOTAL_TICK_COUNT_PER_TIMER_PERIOD          (METRONOME_CHANGE_TICK_COUNT_THRESHOLD*METRONOME_COUNT_PER_METRONOME_INTERVAL)
+#define METRONOME_FREQ_LOWER_BOUND                                  (10*METRONOME_CHANGE_TOTAL_TICK_COUNT_PER_TIMER_PERIOD*1000/METRONOME_PERIOD_LOWER) // We set clk freq by times 10 
+
+#define METRONOME_ANGLE_LOWER          (-40)    // -40 degree
+#define METRONOME_ANGLE_MIDDLE         (0)      // 0 degree
+#define METRONOME_ANGLE_UPPER          (40)     // 40 degree
+
+#define MAIN_LOOP_POLLING_DELAY        (METRONOME_PERIOD_LOWER/(METRONOME_CHANGE_TOTAL_TICK_COUNT_PER_TIMER_PERIOD*5)) //100 ms
 
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
 static int atimer_period_ms = S4527438_HAL_ATIMER_PERIOD;
 static int atimer_clk = S4527438_HAL_ATIMER_CLKSPEED;
 static int cur_mode = NORMAL_MODE;
+static int metronome_cur_period_ms = 0;
+static int metronome_cur_angle = METRONOME_ANGLE_MIDDLE;
+static int metronome_cur_change_tick_count = 0;
+static METRONOME_shift_pattern_TypeEnum metronome_shift_pattern = ANGLE_INCREASE;
+
 /* Private function prototypes -----------------------------------------------*/
 static void handle_normal_mode(int cmd);
 static void handle_metronome_mode(int cmd);
+
+static void metronome_init(void);
+static void metronome_polling_update_angle(void);
+static void metronome_polling_update_LEDBAR(void);
 
 void Hardware_init(void);
 
@@ -45,6 +73,8 @@ int main(void)  {
 	
     char RxChar;
 
+    // set period init value
+
 	/* Main processing loop */
     while (1) {
         RxChar = debug_getc();
@@ -53,6 +83,8 @@ int main(void)  {
             switch(RxChar) {
                 case 'm':
                     cur_mode = METRONOME_MODE;
+
+                    metronome_init();
                     break;
                 case 'n':
                     cur_mode = NORMAL_MODE;
@@ -66,10 +98,17 @@ int main(void)  {
             } else {
                 handle_metronome_mode(RxChar);
             }
-
-		    HAL_Delay(MAIN_LOOP_POLLING_DELAY);		//Delay for 2.5s
         }
-        HAL_Delay(125);
+
+        if( cur_mode == METRONOME_MODE ) {
+            if( ( s4527438_hal_atimer_timer_read() - metronome_cur_change_tick_count) >= METRONOME_CHANGE_TICK_COUNT_THRESHOLD ) {
+                metronome_polling_update_angle();
+                metronome_polling_update_LEDBAR();
+
+                metronome_cur_change_tick_count = s4527438_hal_atimer_timer_read();
+            }
+        }
+        HAL_Delay(MAIN_LOOP_POLLING_DELAY);
 	}
 
     return 0;
@@ -136,6 +175,51 @@ static void handle_normal_mode(int cmd) {
 }
 
 static void handle_metronome_mode(int cmd) {
+    int cur_angle = 0;
+    int atimer_counter = 0;
+    int atimer_counter_ms = 0;
+
+    switch(cmd) {
+        case '+':
+            metronome_cur_period_ms += 1000;
+            s4527438_hal_atimer_period_set(metronome_cur_period_ms/METRONOME_CHANGE_TOTAL_TICK_COUNT_PER_TIMER_PERIOD);
+            break;
+        case '-':
+            metronome_cur_period_ms -= 1000;
+            s4527438_hal_atimer_period_set(metronome_cur_period_ms/METRONOME_CHANGE_TOTAL_TICK_COUNT_PER_TIMER_PERIOD);
+            break;
+    }
+}
+
+static void metronome_init(void) {
+    // Init setting
+    metronome_shift_pattern = ANGLE_INCREASE;
+    metronome_cur_period_ms = METRONOME_PERIOD_LOWER;
+    metronome_cur_change_tick_count = 0;
+    metronome_cur_angle = METRONOME_ANGLE_MIDDLE;
+
+    s4527438_hal_atimer_clkspeed_set(METRONOME_FREQ_LOWER_BOUND);
+    s4527438_hal_atimer_period_set(metronome_cur_period_ms/METRONOME_CHANGE_TOTAL_TICK_COUNT_PER_TIMER_PERIOD);
+}
+
+static void metronome_polling_update_angle(void) {
+    /* Check is joystick triggered*/
+    if( metronome_cur_angle <= METRONOME_ANGLE_LOWER ) {
+        metronome_shift_pattern = ANGLE_INCREASE;
+    } else if( metronome_cur_angle >= METRONOME_ANGLE_UPPER ) {
+        metronome_shift_pattern = ANGLE_DECREASE;
+    }
+
+    if( metronome_shift_pattern == ANGLE_INCREASE ) {
+        metronome_cur_angle += METRONOME_CHANGE_TICK_COUNT_THRESHOLD_ANGLE;
+        s4527438_hal_pantilt_pan_write(metronome_cur_angle);
+    } else {
+        metronome_cur_angle -= METRONOME_CHANGE_TICK_COUNT_THRESHOLD_ANGLE;
+        s4527438_hal_pantilt_pan_write(metronome_cur_angle);
+    }
+}
+
+static void metronome_polling_update_LEDBAR(void) {
 }
 
 /**
