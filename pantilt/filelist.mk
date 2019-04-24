@@ -14,3 +14,5 @@ CFLAGS += -I$(PANTILT_MYLIBPATH)
 
 # List all c files locations that must be included (use space as separate e.g. LIBSRCS += path_to/file1.c path_to/file2.c)
 LIBSRCS += $(PANTILT_MYLIBPATH)/s4527438_hal_pantilt.c
+LIBSRCS += $(PANTILT_MYLIBPATH)/s4527438_os_pantilt.c
+LIBSRCS += $(PANTILT_MYLIBPATH)/s4527438_cli_pantilt.c

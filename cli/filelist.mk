@@ -7,12 +7,10 @@
 # e.g. JOYSTICK_MYLIBPATH=/holme/csse3010/mylib/joystick
 #MYLIBTEMPLATE_PATH=path_to_mylib_driver_folder
 
-SYSMON_MYLIBPATH=/home/csse3010/csse3010/mylib/sysmon
+CLI_MYLIBPATH=/home/csse3010/csse3010/mylib/cli
 
 # Set folder path with header files to include.
-#CFLAGS += -I$(MYLIBTEMPLATE_PATH)
-CFLAGS += -I$(SYSMON_MYLIBPATH)
+CFLAGS += -I$(CLI_MYLIBPATH)
 
 # List all c files locations that must be included (use space as separate e.g. LIBSRCS += path_to/file1.c path_to/file2.c)
-#LIBSRCS += $(MYLIBTEMPLATE_PATH)/sxxxxxx_mylib_template.c
-LIBSRCS += $(SYSMON_MYLIBPATH)/s4527438_hal_sysmon.c
+LIBSRCS += $(CLI_MYLIBPATH)/s4527438_cli_task.c
