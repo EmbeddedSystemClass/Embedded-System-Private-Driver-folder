@@ -24,14 +24,19 @@
 
 #include "FreeRTOS_CLI.h"
 
-#include "s4527438_hal_pantilt.h"
 #include "s4527438_cli_pantilt.h"
+#include "s4527438_os_pantilt.h"
 /* Private typedef -----------------------------------------------------------*/
 
 /* Private define ------------------------------------------------------------*/
 
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
+/* Private function prototypes -----------------------------------------------*/
+void s4527438_cli_pantilt_init(void);
+static BaseType_t prvPanCommand(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString );
+static BaseType_t prvTiltCommand(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString );
+
 CLI_Command_Definition_t xPan = {  /* Structure that defines the "pan" command line command. */
     "pan",
     "pan: pan <Angle Degrees> or pan [left|right \r\n",
@@ -45,10 +50,6 @@ CLI_Command_Definition_t xTilt = {  /* Structure that defines the "tilt" command
     prvTiltCommand,
     1
 };
-/* Private function prototypes -----------------------------------------------*/
-void s4527438_cli_pantilt_init(void);
-static BaseType_t prvPanCommand(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString );
-static BaseType_t prvTiltCommand(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString );
 
 void s4527438_cli_pantilt_init(void) {
     /* Register CLI commands */
@@ -60,18 +61,15 @@ static BaseType_t prvPanCommand(char *pcWriteBuffer, size_t xWriteBufferLen, con
 
     long lParam_len;
     const char *cCmd_string;
-    char *target_string = null;
-    int currentAngle = 0;
+    char *target_string = NULL;
 
     /* Get parameters from command string */
     cCmd_string = FreeRTOS_CLIGetParameter(pcCommandString, 1, &lParam_len);
 
     if( strcmp(cCmd_string,"right") == 0 ) {
-        currentAngle = pantilt_angle_read(PAN_TYPE);
-        pantilt_angle_write(PAN_TYPE, (currentAngle + 5));
+        s4527438_os_pan_right();
     } else if( strcmp(cCmd_string,"left") == 0 ) {
-        currentAngle = pantilt_angle_read(PAN_TYPE);
-        pantilt_angle_write(PAN_TYPE, (currentAngle - 5));
+        s4527438_os_pan_left();
     } else if( strlen(cCmd_string) > 0 ) {
         int target_value = 0;
         for(target_string = cCmd_string;target_string != NULL && target_string[0] != '\0';target_string++) {
@@ -81,7 +79,7 @@ static BaseType_t prvPanCommand(char *pcWriteBuffer, size_t xWriteBufferLen, con
             }
         }
         target_value = atoi(cCmd_string);
-        pantilt_angle_write(PAN_TYPE, target_value);
+        s4527438_os_pan_write_angle(target_value);
     } else {
         return pdFALSE;
     }
@@ -95,18 +93,16 @@ static BaseType_t prvTiltCommand(char *pcWriteBuffer, size_t xWriteBufferLen, co
 
     long lParam_len;
     const char *cCmd_string;
-    char *target_string = null;
+    char *target_string = NULL;
     int currentAngle = 0;
 
     /* Get parameters from command string */
     cCmd_string = FreeRTOS_CLIGetParameter(pcCommandString, 1, &lParam_len);
 
     if( strcmp(cCmd_string,"up") == 0 ) {
-        currentAngle = pantilt_angle_read(TILT_TYPE);
-        pantilt_angle_write(TILT_TYPE, (currentAngle + 5));
+        s4527438_os_tilt_up();
     } else if( strcmp(cCmd_string,"down") == 0 ) {
-        currentAngle = pantilt_angle_read(TILT_TYPE);
-        pantilt_angle_write(TILT_TYPE, (currentAngle - 5));
+        s4527438_os_tilt_down();
     } else if( strlen(cCmd_string) > 0 ) {
         int target_value = 0;
         for(target_string = cCmd_string;target_string != NULL && target_string[0] != '\0';target_string++) {
@@ -116,7 +112,7 @@ static BaseType_t prvTiltCommand(char *pcWriteBuffer, size_t xWriteBufferLen, co
             }
         }
         target_value = atoi(cCmd_string);
-        pantilt_angle_write(TILT_TYPE, target_value);
+        s4527438_os_tilt_write_angle(target_value);
     } else {
         return pdFALSE;
     }

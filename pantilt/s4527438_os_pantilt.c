@@ -21,6 +21,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "queue.h"
+#include "semphr.h"
 
 #include "s4527438_hal_pantilt.h"
 
@@ -59,7 +60,12 @@ void s4527438_os_pan_right(void);
 void s4527438_os_tilt_up(void);
 void s4527438_os_tilt_down(void);
 
+static void Receiver_Task( void );
+
 void s4527438_os_pantilt_init(void) {
+    // Harware init
+    s4527438_hal_pantilt_init();
+
     s4527438SemaphorePanLeft = xSemaphoreCreateBinary();
     s4527438SemaphorePanRight = xSemaphoreCreateBinary();
 
@@ -133,29 +139,25 @@ void s4527438_os_tilt_write_angle(int angle) {
 }
 
 void s4527438_os_pan_left(void) {
-    if (LEDSemaphore != NULL) { /* Check if semaphore exists */
-        /* Give LED Semaphore */
+    if (s4527438SemaphorePanLeft != NULL) { /* Check if semaphore exists */
         xSemaphoreGive(s4527438SemaphorePanLeft);
     }
 }
 
 void s4527438_os_pan_right(void) {
-    if (LEDSemaphore != NULL) { /* Check if semaphore exists */
-        /* Give LED Semaphore */
+    if (s4527438SemaphorePanRight != NULL) { /* Check if semaphore exists */
         xSemaphoreGive(s4527438SemaphorePanRight);
     }
 }
 
 void s4527438_os_tilt_up(void) {
-    if (LEDSemaphore != NULL) { /* Check if semaphore exists */
-        /* Give LED Semaphore */
+    if (s4527438SemaphoreTiltUp != NULL) { /* Check if semaphore exists */
         xSemaphoreGive(s4527438SemaphoreTiltUp);
     }
 }
 
 void s4527438_os_tilt_down(void) {
-    if (LEDSemaphore != NULL) { /* Check if semaphore exists */
-        /* Give LED Semaphore */
+    if (s4527438SemaphoreTiltDown != NULL) { /* Check if semaphore exists */
         xSemaphoreGive(s4527438SemaphoreTiltDown);
     }
 }
@@ -164,6 +166,7 @@ void Receiver_Task( void ) {
 
     struct Message RecvMessage;
     QueueSetMemberHandle_t xActivatedMember;
+    int currentAngle = 0;
 
     for (;;) {
 
@@ -179,7 +182,7 @@ void Receiver_Task( void ) {
 
             /* display received item */
             portENTER_CRITICAL();
-            pantilt_angle_write(PAN_TYPE, target_value);
+            pantilt_angle_write(PAN_TYPE, RecvMessage.angle);
             portEXIT_CRITICAL();
 
 #ifdef DEBUG
@@ -193,7 +196,7 @@ void Receiver_Task( void ) {
 
             /* display received item */
             portENTER_CRITICAL();
-            pantilt_angle_write(TILT_TYPE, target_value);
+            pantilt_angle_write(TILT_TYPE, RecvMessage.angle);
             portEXIT_CRITICAL();
 
 #ifdef DEBUG
@@ -209,6 +212,10 @@ void Receiver_Task( void ) {
             currentAngle = pantilt_angle_read(PAN_TYPE);
             pantilt_angle_write(PAN_TYPE, (currentAngle - 5));
             portEXIT_CRITICAL();
+
+#ifdef DEBUG
+            debug_printf("Received: PanLeft\n\r");
+#endif
         } else if (xActivatedMember == s4527438SemaphorePanRight) {   /* Check if pb semaphore occurs */
 
             /* We were able to obtain the semaphore and can now access the shared resource. */
@@ -218,6 +225,10 @@ void Receiver_Task( void ) {
             currentAngle = pantilt_angle_read(PAN_TYPE);
             pantilt_angle_write(PAN_TYPE, (currentAngle + 5));
             portEXIT_CRITICAL();
+
+#ifdef DEBUG
+            debug_printf("Received: PanRight\n\r");
+#endif
         } else if (xActivatedMember == s4527438SemaphoreTiltUp) {  /* Check if LED semaphore occurs */
 
             /* We were able to obtain the semaphore and can now access the shared resource. */
@@ -227,6 +238,9 @@ void Receiver_Task( void ) {
             currentAngle = pantilt_angle_read(TILT_TYPE);
             pantilt_angle_write(TILT_TYPE, (currentAngle + 5));
             portEXIT_CRITICAL();
+#ifdef DEBUG
+            debug_printf("Received: TiltUp\n\r");
+#endif
         } else if (xActivatedMember == s4527438SemaphoreTiltDown) {   /* Check if pb semaphore occurs */
 
             /* We were able to obtain the semaphore and can now access the shared resource. */
@@ -236,6 +250,9 @@ void Receiver_Task( void ) {
             currentAngle = pantilt_angle_read(TILT_TYPE);
             pantilt_angle_write(TILT_TYPE, (currentAngle - 5));
             portEXIT_CRITICAL();
+#ifdef DEBUG
+            debug_printf("Received: TiltDown\n\r");
+#endif
         }
 
         /* Delay for 10ms */
