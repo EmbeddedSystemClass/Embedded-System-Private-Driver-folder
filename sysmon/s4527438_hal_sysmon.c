@@ -14,7 +14,6 @@
 #include "board.h"
 #include "stm32f4xx_hal.h"
 #include "debug_printf.h"
-#include "s4527438_hal_atimer.h"
 
 #ifdef S4527438_SYSMON_CONF_INC
 #include "s4527438_hal_sysmon_config.h"
