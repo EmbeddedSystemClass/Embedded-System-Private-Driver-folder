@@ -41,7 +41,7 @@ include $(FREERTOSCLI_PATH)/filelist.mk
 include /home/csse3010/csse3010/mylib/cli/filelist.mk
 
 #include sysmon makefile
-#include /home/csse3010/csse3010/mylib/sysmon/filelist.mk
+include /home/csse3010/csse3010/mylib/sysmon/filelist.mk
 
 #include pantilt makefile
 include /home/csse3010/csse3010/mylib/pantilt/filelist.mk
