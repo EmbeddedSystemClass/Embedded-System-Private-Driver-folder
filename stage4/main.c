@@ -112,7 +112,7 @@ void Task3( void ) {
 
         BRD_LEDGreenToggle();
         /* Extra Delay for 3ms */
-        //vTaskDelay(3);
+        //vTaskDelay(1);
 
         s4527438_hal_sysmon_chan2_clr();
 
@@ -127,7 +127,10 @@ void Hardware_init( void ) {
 
     BRD_LEDInit();              //Initialise Blue LED
     BRD_LEDBlueOff();               //Turn off Blue LED
+    BRD_LEDRedOff();               //Turn off Blue LED
+    BRD_LEDGreenOff();               //Turn off Blue LED
 
+    s4527438_hal_sysmon_init();
     portENABLE_INTERRUPTS();    //Enable interrupts
 
 }
