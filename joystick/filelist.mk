@@ -16,3 +16,4 @@ CFLAGS += -I$(JOYSTICK_MYLIBPATH)
 # List all c files locations that must be included (use space as separate e.g. LIBSRCS += path_to/file1.c path_to/file2.c)
 #LIBSRCS += $(MYLIBTEMPLATE_PATH)/sxxxxxx_mylib_template.c
 LIBSRCS += $(JOYSTICK_MYLIBPATH)/s4527438_hal_joystick.c
+LIBSRCS += $(JOYSTICK_MYLIBPATH)/s4527438_os_joystick.c
