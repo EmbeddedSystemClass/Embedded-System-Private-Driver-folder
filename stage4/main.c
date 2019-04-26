@@ -12,6 +12,7 @@
 #include "stm32f4xx_hal.h"
 #include "debug_printf.h"
 #include "s4527438_os_pantilt.h"
+#include "s4527438_os_joystick.h"
 #include "s4527438_cli_task.h"
 
 #include "FreeRTOS.h"
@@ -34,17 +35,22 @@
 #define mainTASK3_PRIORITY               ( tskIDLE_PRIORITY + 2 )
 #define mainTASK3_STACK_SIZE     ( configMINIMAL_STACK_SIZE * 2 )
 
+#define mainTASKControl_PRIORITY               ( tskIDLE_PRIORITY + 2 )
+#define mainTASKControl_STACK_SIZE     ( configMINIMAL_STACK_SIZE * 2 )
+
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
 static TaskHandle_t xTask1OsHandle;
 static TaskHandle_t xTask2OsHandle;
 static TaskHandle_t xTask3OsHandle;
+static TaskHandle_t xTaskControlOsHandle;
 
 /* Private function prototypes -----------------------------------------------*/
 static void Hardware_init();
 static void Task1( void );
 static void Task2( void );
 static void Task3( void );
+static void TaskControl( void );
 
 /**
   * @brief  Main program - flashes onboard LEDs
@@ -56,6 +62,7 @@ int main(void)  {
     Hardware_init();
 
     s4527438_os_pantilt_init();
+    s4527438_os_joystick_init();
     s4527438_cli_init();
 	
     // Task 1
@@ -66,6 +73,9 @@ int main(void)  {
 
     // Task 3
     xTaskCreate( (void *) &Task3, (const signed char *) "Task3", mainTASK3_STACK_SIZE, NULL, mainTASK3_PRIORITY, &xTask3OsHandle );
+
+    // Task 4
+    xTaskCreate( (void *) &TaskControl, (const signed char *) "TaskControl", mainTASKControl_STACK_SIZE, NULL, mainTASKControl_PRIORITY, &xTaskControlOsHandle );
 
     vTaskStartScheduler();
     return 0;
@@ -112,12 +122,31 @@ void Task3( void ) {
 
         BRD_LEDGreenToggle();
         /* Extra Delay for 3ms */
-        //vTaskDelay(1);
+        vTaskDelay(1);
 
         s4527438_hal_sysmon_chan2_clr();
 
         /* Wait for 1ms */
         //vTaskDelay(1);
+    }
+}
+
+void TaskControl( void ) {
+
+    for (;;) {
+
+        /* Check is joystick triggered*/
+        if( s4527438_os_joystick_is_switch_triggered() ) {
+            if( eTaskGetState(xTask2OsHandle) == eRunning ) {
+                vTaskDelete(xTask2OsHandle);
+            } else if( eTaskGetState(xTask2OsHandle) == eDeleted ) {
+                xTaskCreate( (void *) &Task2, (const signed char *) "Task2", mainTASK2_STACK_SIZE, NULL, mainTASK2_PRIORITY, &xTask2OsHandle );
+            }
+            s4527438_os_joystick_switch_reset();
+        }
+
+        /* Wait for 1ms */
+        vTaskDelay(1);
     }
 }
 

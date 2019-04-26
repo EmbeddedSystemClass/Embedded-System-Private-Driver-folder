@@ -46,6 +46,9 @@ include /home/csse3010/csse3010/mylib/sysmon/filelist.mk
 #include pantilt makefile
 include /home/csse3010/csse3010/mylib/pantilt/filelist.mk
 
+#include joystick makefile
+include /home/csse3010/csse3010/mylib/joystick/filelist.mk
+
 #include nucelo-f429zi makefile - NOTE MUST BE LAST TO INCLUDE
 include $(SOURCELIB_ROOT)/components/boards/nucleo-f429zi/board.mk
 
