@@ -40,12 +40,11 @@ static TaskHandle_t xTaskCliHandle;
 void CLI_Task(void);
 
 void s4527438_cli_init(void) {
-    xTaskCreate( (void *) &CLI_Task, (const signed char *) "CLI", mainCLI_TASK_STACK_SIZE, NULL, mainCLI_PRIORITY, &xTaskCliHandle );
-
 #ifdef S4527438_CLI_PANTILT_H_
     s4527438_cli_pantilt_init();
 #endif
 
+    xTaskCreate( (void *) &CLI_Task, (const signed char *) "CLI", mainCLI_TASK_STACK_SIZE, NULL, mainCLI_PRIORITY, &xTaskCliHandle );
 }
 
 void s4527438_cli_deinit(void) {
