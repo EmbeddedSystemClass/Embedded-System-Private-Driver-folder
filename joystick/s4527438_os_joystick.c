@@ -32,6 +32,6 @@ void s4527438_os_joystick_switch_reset(void) {
 }
 
 uint32_t s4527438_os_joystick_is_switch_triggered(void) {
-    return s4527438_os_joystick_is_switch_triggered();
+    return s4527438_hal_joystick_is_switch_triggered();
 }
 
