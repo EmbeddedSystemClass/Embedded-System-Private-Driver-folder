@@ -25,6 +25,12 @@
 #endif
 
 /* Private typedef -----------------------------------------------------------*/
+ typedef enum
+ {
+     eNeedDelete = 0,
+     eNeedCreate,      
+     eNoCmd,      
+ } eTaskToDo;
 /* Private define ------------------------------------------------------------*/
 #define mainTASK1_PRIORITY               ( tskIDLE_PRIORITY + 2 )
 #define mainTASK1_STACK_SIZE     ( configMINIMAL_STACK_SIZE * 2 )
@@ -44,6 +50,7 @@ static TaskHandle_t xTask1OsHandle;
 static TaskHandle_t xTask2OsHandle;
 static TaskHandle_t xTask3OsHandle;
 static TaskHandle_t xTaskControlOsHandle;
+static eTaskToDo task2ToDo = eNoCmd;
 
 /* Private function prototypes -----------------------------------------------*/
 static void Hardware_init();
@@ -64,6 +71,7 @@ int main(void)  {
     s4527438_os_pantilt_init();
     s4527438_os_joystick_init();
     s4527438_cli_init();
+    portENABLE_INTERRUPTS();
 	
     // Task 1
     xTaskCreate( (void *) &Task1, (const signed char *) "Task1", mainTASK1_STACK_SIZE, NULL, mainTASK1_PRIORITY, &xTask1OsHandle );
@@ -101,9 +109,12 @@ void Task1( void ) {
 void Task2( void ) {
 
     for (;;) {
+        if( task2ToDo == eNeedDelete ) {
+            task2ToDo = eNeedCreate;
+            vTaskDelete(NULL);
+        }
         s4527438_hal_sysmon_chan1_set();
 
-        BRD_LEDRedToggle();
 
         /* Extra Delay for 3ms */
         vTaskDelay(3);
@@ -137,16 +148,21 @@ void TaskControl( void ) {
 
         /* Check is joystick triggered*/
         if( s4527438_os_joystick_is_switch_triggered() ) {
-            if( eTaskGetState(xTask2OsHandle) == eRunning ) {
-                vTaskDelete(xTask2OsHandle);
-            } else if( eTaskGetState(xTask2OsHandle) == eDeleted ) {
+            //portENTER_CRITICAL();
+            if( eTaskGetState(xTask2OsHandle) != eDeleted ) {
+                task2ToDo = eNeedDelete;
+                BRD_LEDRedOn();
+            } else if( eTaskGetState(xTask2OsHandle) == eDeleted || task2ToDo == eNeedCreate ) {
+                BRD_LEDRedOff();
                 xTaskCreate( (void *) &Task2, (const signed char *) "Task2", mainTASK2_STACK_SIZE, NULL, mainTASK2_PRIORITY, &xTask2OsHandle );
+                task2ToDo = eNoCmd;
             }
             s4527438_os_joystick_switch_reset();
+            //portEXIT_CRITICAL();
         }
 
         /* Wait for 1ms */
-        vTaskDelay(1);
+        vTaskDelay(100);
     }
 }
 
