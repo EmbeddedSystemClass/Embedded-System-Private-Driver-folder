@@ -33,7 +33,8 @@
  } eTaskToDo;
 /* Private define ------------------------------------------------------------*/
 #define mainTASK1_PRIORITY               ( tskIDLE_PRIORITY + 2 )
-#define mainTASK1_STACK_SIZE     ( configMINIMAL_STACK_SIZE * 2 )
+//#define mainTASK1_STACK_SIZE     ( configMINIMAL_STACK_SIZE * 2 )
+#define mainTASK1_STACK_SIZE     ( ( unsigned short ) 9 )
 
 #define mainTASK2_PRIORITY               ( tskIDLE_PRIORITY + 2 )
 #define mainTASK2_STACK_SIZE     ( configMINIMAL_STACK_SIZE * 2 )
