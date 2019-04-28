@@ -62,6 +62,8 @@ static BaseType_t prvPanCommand(char *pcWriteBuffer, size_t xWriteBufferLen, con
     long lParam_len;
     const char *cCmd_string;
     char *target_string = NULL;
+    // We always need to stop search further, even if the command is not correct
+    BaseType_t returnedValue = pdFALSE;
 
     /* Get parameters from command string */
     cCmd_string = FreeRTOS_CLIGetParameter(pcCommandString, 1, &lParam_len);
@@ -72,21 +74,18 @@ static BaseType_t prvPanCommand(char *pcWriteBuffer, size_t xWriteBufferLen, con
         s4527438_os_pan_left();
     } else if( strlen(cCmd_string) > 0 ) {
         int target_value = 0;
-        for(target_string = cCmd_string;target_string != NULL && target_string[0] != '\0';target_string++) {
+        for(target_string = (cCmd_string[0] == '-'?(&cCmd_string[1]):cCmd_string);target_string != NULL && target_string[0] != '\0';target_string++) {
             if( target_string[0] < '0' 
                 || target_string[0] > '9' ) {
-                return pdFALSE;
+                return returnedValue;
             }
         }
         target_value = atoi(cCmd_string);
         s4527438_os_pan_write_angle(target_value);
     } else {
-        return pdFALSE;
     }
 
-    /* Return pdFALSE, as there are no more strings to return */
-    /* Only return pdTRUE, if more strings need to be printed */
-    return pdFALSE;
+    return returnedValue;
 }
 
 static BaseType_t prvTiltCommand(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString ) {
@@ -95,6 +94,8 @@ static BaseType_t prvTiltCommand(char *pcWriteBuffer, size_t xWriteBufferLen, co
     const char *cCmd_string;
     char *target_string = NULL;
     int currentAngle = 0;
+    // We always need to stop search further, even if the command is not correct
+    BaseType_t returnedValue = pdFALSE;
 
     /* Get parameters from command string */
     cCmd_string = FreeRTOS_CLIGetParameter(pcCommandString, 1, &lParam_len);
@@ -105,19 +106,16 @@ static BaseType_t prvTiltCommand(char *pcWriteBuffer, size_t xWriteBufferLen, co
         s4527438_os_tilt_down();
     } else if( strlen(cCmd_string) > 0 ) {
         int target_value = 0;
-        for(target_string = cCmd_string;target_string != NULL && target_string[0] != '\0';target_string++) {
+        for(target_string = (cCmd_string[0] == '-'?(&cCmd_string[1]):cCmd_string);target_string != NULL && target_string[0] != '\0';target_string++) {
             if( target_string[0] < '0'
                 || target_string[0] > '9' ) {
-                return pdFALSE;
+                return returnedValue;
             }
         }
         target_value = atoi(cCmd_string);
         s4527438_os_tilt_write_angle(target_value);
     } else {
-        return pdFALSE;
     }
 
-    /* Return pdFALSE, as there are no more strings to return */
-    /* Only return pdTRUE, if more strings need to be printed */
-    return pdFALSE;
+    return returnedValue;
 }
