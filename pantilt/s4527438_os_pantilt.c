@@ -33,7 +33,7 @@ struct Message {    /* Message consists of sequence number and payload string */
 };
 /* Private define ------------------------------------------------------------*/
 #define mainRECEIVERTASK_PRIORITY               ( tskIDLE_PRIORITY + 2 )
-#define mainRECEIVERTASK_STACK_SIZE     ( configMINIMAL_STACK_SIZE * 2 )
+#define mainRECEIVERTASK_STACK_SIZE     ( configMINIMAL_STACK_SIZE * 8 )
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
 static TaskHandle_t xTaskPantiltOsHandle;
@@ -170,7 +170,7 @@ void Receiver_Task( void ) {
 
     for (;;) {
 
-        xActivatedMember = xQueueSelectFromSet(xQueueSet, 20);
+        xActivatedMember = xQueueSelectFromSet(xQueueSet, 0);
 
         /* Which set member was selected?  Receives/takes can use a block time
         of zero as they are guaranteed to pass because xQueueSelectFromSet()
@@ -181,12 +181,12 @@ void Receiver_Task( void ) {
             xQueueReceive( s4527438QueuePan, &RecvMessage, 0 );
 
             /* display received item */
-            portENTER_CRITICAL();
             pantilt_angle_write(PAN_TYPE, RecvMessage.angle);
-            portEXIT_CRITICAL();
 
 #ifdef DEBUG
+            portENTER_CRITICAL();
             debug_printf("Received: angle = %d\n\r", RecvMessage.angle);
+            portEXIT_CRITICAL();
 #endif
 
         } else if (xActivatedMember == s4527438QueueTilt) {
@@ -195,12 +195,12 @@ void Receiver_Task( void ) {
             xQueueReceive( s4527438QueueTilt, &RecvMessage, 0 );
 
             /* display received item */
-            portENTER_CRITICAL();
             pantilt_angle_write(TILT_TYPE, RecvMessage.angle);
-            portEXIT_CRITICAL();
 
 #ifdef DEBUG
+            portENTER_CRITICAL();
             debug_printf("Received: angle = %d\n\r", RecvMessage.angle);
+            portEXIT_CRITICAL();
 #endif
 
         } else if (xActivatedMember == s4527438SemaphorePanLeft) {  /* Check if LED semaphore occurs */
@@ -208,50 +208,52 @@ void Receiver_Task( void ) {
             /* We were able to obtain the semaphore and can now access the shared resource. */
             xSemaphoreTake(s4527438SemaphorePanLeft, 0 );
 
-            portENTER_CRITICAL();
             currentAngle = pantilt_angle_read(PAN_TYPE);
             pantilt_angle_write(PAN_TYPE, (currentAngle - 5));
-            portEXIT_CRITICAL();
 
 #ifdef DEBUG
+            portENTER_CRITICAL();
             debug_printf("Received: PanLeft\n\r");
+            portEXIT_CRITICAL();
 #endif
         } else if (xActivatedMember == s4527438SemaphorePanRight) {   /* Check if pb semaphore occurs */
 
             /* We were able to obtain the semaphore and can now access the shared resource. */
             xSemaphoreTake( s4527438SemaphorePanRight, 0 );
 
-            portENTER_CRITICAL();
             currentAngle = pantilt_angle_read(PAN_TYPE);
             pantilt_angle_write(PAN_TYPE, (currentAngle + 5));
-            portEXIT_CRITICAL();
 
 #ifdef DEBUG
+            portENTER_CRITICAL();
             debug_printf("Received: PanRight\n\r");
+            portEXIT_CRITICAL();
 #endif
         } else if (xActivatedMember == s4527438SemaphoreTiltUp) {  /* Check if LED semaphore occurs */
 
             /* We were able to obtain the semaphore and can now access the shared resource. */
             xSemaphoreTake(s4527438SemaphoreTiltUp, 0 );
 
-            portENTER_CRITICAL();
             currentAngle = pantilt_angle_read(TILT_TYPE);
             pantilt_angle_write(TILT_TYPE, (currentAngle + 5));
-            portEXIT_CRITICAL();
+
 #ifdef DEBUG
+            portENTER_CRITICAL();
             debug_printf("Received: TiltUp\n\r");
+            portEXIT_CRITICAL();
 #endif
         } else if (xActivatedMember == s4527438SemaphoreTiltDown) {   /* Check if pb semaphore occurs */
 
             /* We were able to obtain the semaphore and can now access the shared resource. */
             xSemaphoreTake( s4527438SemaphoreTiltDown, 0 );
 
-            portENTER_CRITICAL();
             currentAngle = pantilt_angle_read(TILT_TYPE);
             pantilt_angle_write(TILT_TYPE, (currentAngle - 5));
-            portEXIT_CRITICAL();
+
 #ifdef DEBUG
+            portENTER_CRITICAL();
             debug_printf("Received: TiltDown\n\r");
+            portEXIT_CRITICAL();
 #endif
         }
 
