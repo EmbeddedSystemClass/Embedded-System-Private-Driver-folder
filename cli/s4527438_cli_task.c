@@ -29,8 +29,8 @@
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
 /* Task Priorities ------------------------------------------------------------*/
-#define mainCLI_PRIORITY                    ( tskIDLE_PRIORITY + 2 )
-#define mainCLI_TASK_STACK_SIZE     ( configMINIMAL_STACK_SIZE * 3 )
+#define mainCLI_PRIORITY                    ( tskIDLE_PRIORITY + 3 )
+#define mainCLI_TASK_STACK_SIZE     ( configMINIMAL_STACK_SIZE * 16 )
 
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
