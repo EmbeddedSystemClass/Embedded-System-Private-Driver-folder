@@ -99,13 +99,17 @@ void CLI_Task(void) {
                      xReturned = FreeRTOS_CLIProcessCommand( cInputString, pcOutputString, configCOMMAND_INT_MAX_OUTPUT_SIZE );
 
                      /* Display CLI command output string (not thread safe) */
-                     portENTER_CRITICAL();
-                     for (i = 0; i < strlen(pcOutputString); i++) {
-                         debug_putc(*(pcOutputString + i));
+                     if(strlen(pcOutputString) > 0 ) {
+                        portENTER_CRITICAL();
+                        for (i = 0; i < strlen(pcOutputString); i++) {
+                             debug_putc(*(pcOutputString + i));
+                        }
+                        debug_flush();
+                        portEXIT_CRITICAL();
+                        memset(pcOutputString,0x00,strlen(pcOutputString));
                      }
-                     portEXIT_CRITICAL();
 
-                     vTaskDelay(5);  //Must delay between debug_printfs.
+                     //vTaskDelay(5);  //Must delay between debug_printfs.
                  }
 
                  memset(cInputString, 0, sizeof(cInputString));
