@@ -134,7 +134,8 @@ void Task3( void ) {
 
         BRD_LEDGreenToggle();
         /* Extra Delay for 3ms */
-        vTaskDelay(1);
+        //vTaskDelay(1);
+        portYIELD();
 
         s4527438_hal_sysmon_chan2_clr();
 
@@ -152,9 +153,7 @@ void TaskControl( void ) {
             //portENTER_CRITICAL();
             if( eTaskGetState(xTask2OsHandle) != eDeleted ) {
                 task2ToDo = eNeedDelete;
-                BRD_LEDRedOn();
             } else if( eTaskGetState(xTask2OsHandle) == eDeleted || task2ToDo == eNeedCreate ) {
-                BRD_LEDRedOff();
                 xTaskCreate( (void *) &Task2, (const signed char *) "Task2", mainTASK2_STACK_SIZE, NULL, mainTASK2_PRIORITY, &xTask2OsHandle );
                 task2ToDo = eNoCmd;
             }
