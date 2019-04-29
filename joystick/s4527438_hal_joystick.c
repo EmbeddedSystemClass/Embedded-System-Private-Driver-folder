@@ -158,7 +158,6 @@ static void joystick_switch_init(void) {
     JOYSTICK_BUTTON_GPIO_CLK_ENABLE();
 
     GPIO_InitStructure.Mode = GPIO_MODE_IT_RISING;
-    //GPIO_InitStructure.Mode = GPIO_MODE_INPUT;
     //GPIO_InitStructure.Pull = GPIO_PULLDOWN;
     //GPIO_InitStructure.Pull = GPIO_NOPULL;
     GPIO_InitStructure.Pull = GPIO_PULLUP; 
@@ -208,7 +207,6 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
     if (GPIO_Pin == JOYSTICK_BUTTON_PIN)
     {
         joystick_switch_debounce_update();
-
     }
 }
 
