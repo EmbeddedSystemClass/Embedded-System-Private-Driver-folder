@@ -1,7 +1,7 @@
 /**
   ******************************************************************************
-  * @file    blink/main.c
-  * @author  MDS
+  * @file    stages/stage4/main.c
+  * @author  KO-CHEN CHI
   * @date    27112018
   * @brief   Nucleo429ZI onboard LED flashing example.
   ******************************************************************************
