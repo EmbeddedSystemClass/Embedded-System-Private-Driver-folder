@@ -1,6 +1,6 @@
 /** 
  **************************************************************
- * @file mylib/s4527438_hal_pantilt.c
+ * @file mylib/s4527438_os_pantilt.c
  * @author KO-CHEN CHI - s4527438
  * @date 26032019
  * @brief mylib pantilt driver

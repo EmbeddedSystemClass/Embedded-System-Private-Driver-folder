@@ -1,9 +1,9 @@
 /** 
  **************************************************************
- * @file mylib/s4527438_hal_atimer.h
+ * @file mylib/s4527438_hal_sysmon.h
  * @author KO-CHEN CHI - s4527438
  * @date 26032019
- * @brief mylib atimer driver
+ * @brief mylib sysmon driver
  * REFERENCE: 
  ***************************************************************
  * EXTERNAL FUNCTIONS 

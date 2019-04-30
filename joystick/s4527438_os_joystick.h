@@ -1,10 +1,10 @@
 /** 
  **************************************************************
- * @file mylib/sxxxxxx_mylib_template.h
- * @author MyName - MyStudent ID
- * @date 22022018
- * @brief mylib template driver
- * REFERENCE: DON'T JUST COPY THIS BLINDLY.pdf 
+ * @file mylib/joystick/s4527438_os_joystick.h
+ * @author KO-CHEN CHI - s4527438
+ * @date 26032019
+ * @brief mylib joystick driver
+ * REFERENCE: 
  ***************************************************************
  * EXTERNAL FUNCTIONS 
  ***************************************************************
