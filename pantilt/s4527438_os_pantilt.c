@@ -33,7 +33,7 @@ struct Message {    /* Message consists of sequence number and payload string */
 };
 /* Private define ------------------------------------------------------------*/
 #define mainRECEIVERTASK_PRIORITY               ( tskIDLE_PRIORITY + 2 )
-#define mainRECEIVERTASK_STACK_SIZE     ( configMINIMAL_STACK_SIZE * 8 )
+#define mainRECEIVERTASK_STACK_SIZE     ( configMINIMAL_STACK_SIZE * 16 )
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
 static TaskHandle_t xTaskPantiltOsHandle;
