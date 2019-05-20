@@ -15,14 +15,20 @@
 #include "stm32f4xx_hal.h"
 #include "debug_printf.h"
 #include "s4527438_hal_radio.h"
-#include "s4527438_lib_hamming.h"
 #include "radio_fsm.h"
 #include "nrf24l01plus.h"
 
 /* Private typedef -----------------------------------------------------------*/
 
 /* Private define ------------------------------------------------------------*/
-#define RX_ADDR_STRING                      "45274389"
+#define RX_ADDR_STRING_DEFINE               45274389
+
+#define STRINGIFY_HELPER(A) #A
+#define STRINGIFY(...)  STRINGIFY_HELPER(__VA_ARGS__)
+#define RX_ADDR_STRING STRINGIFY(RX_ADDR_STRING_DEFINE) 
+
+#define HEX2PER_BYTE(c)     (*(c) >= 'A' ? (*(c) - 'A')+10 : (*(c)-'0'))
+#define HEX2BYTE(c)         (HEX2PER_BYTE(c)*16 + HEX2PER_BYTE(c+1))
 
 #define RADIO_HAL_TOTAL_PACKET_WIDTH        32
 #define RADIO_HAL_TX_RX_ADDR_WIDTH          4
@@ -38,8 +44,6 @@
 
 #define RADIO_HAL_TX_BYTE_9_VALUE           0x00 
 #define RADIO_HAL_TX_BYTE_9_LEN             1
-
-#define RADIO_HAL_ONE_BYTE_ENCODED_OUTPUT_SIZE   2
 
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
@@ -95,19 +99,13 @@ char *addr) {
 
 static uint8_t hex_2_byte(unsigned char *input_2_char) {
     uint8_t result = 0;
-    unsigned char target_char = '';
+    unsigned char target_char = (*input_2_char);
+    unsigned char target_char2 = (*(input_2_char + 1));
     unsigned char i = 0;
 
-    i = 0;
-    while(1) {
-        if( i >= 2 ) {
-            break;
-        }
-        input_2_char++;
-        result *= 16;
-        target_char = (*input_2_char);
+    for(i = 0;i < 2;i++) {
         if( target_char >= '0' && target_char <= '9' ) {
-            result += (target_char - '0');
+            result += (target_char - '0')
         } else {
             if( target_char >= 'A' && target_char <= 'F' ) {
                 result += (target_char - 'A') + 10;
@@ -115,31 +113,16 @@ static uint8_t hex_2_byte(unsigned char *input_2_char) {
                 result += (target_char - 'a') + 10;
             }
         }
-        i++;
+        input_2_char++;
+        result *= 16;
     }
-    return result;
 }
 
-static void string_to_hex(char *input_string,unsigned char input_length,uint8_t *output_buffer,unsigned char output_length) {
-    unsigned char j = 0;
-    char *input_string_end = input_string;
+static void string_to_hex(unsigned char *input_string,unsigned char input_length,uint8_t *output_buffer,unsigned char output_length) {
+    unsigned char i = 0 , j = 0;
 
-    input_string = input_string + input_length - 2;
-
-    if( strcmp(input_string_end,"0x") ) {
-        input_string_end += 2;
-    }
-
-    while(1) {
-        if( (input_string - input_string_end) < 0 ) {
-            break;
-        }
-        if( j >= output_length ) {
-            break;
-        }
+    for(i = 0,j=0;i < (input_length - 1) && j < output_length;i += 2,input_string+=2,j+=1) {
         output_buffer[j] = hex_2_byte(input_string);
-        input_string -= 2;
-        j++;
     }
 }
 
@@ -148,11 +131,13 @@ chan, unsigned char *addr, unsigned
 char *txpacket) {
     uint8_t send_buffer[RADIO_HAL_TOTAL_PACKET_WIDTH];
     uint8_t *current_packet_position = NULL;
-    /*
-        RX_ADDR_STRING :45274389
-        
-    */
-    uint8_t addr_hex[4] = {0};
+    uint8_t rx_addr_hex[] = {
+        HEX2BYTE(RX_ADDR_STRING+0),
+        HEX2BYTE(RX_ADDR_STRING+2),
+        HEX2BYTE(RX_ADDR_STRING+4),
+        HEX2BYTE(RX_ADDR_STRING+6),
+    };
+    uint8_t tx_addr_hex[4] = {0};
 
     memset(send_buffer,0x00,sizeof(send_buffer));
     current_packet_position = send_buffer;
@@ -161,15 +146,13 @@ char *txpacket) {
     memset(current_packet_position,RADIO_HAL_TX_BYTE_0_VALUE,RADIO_HAL_TX_BYTE_0_LEN);
     current_packet_position += RADIO_HAL_TX_BYTE_0_LEN;
 
-    // 4 bytes tx address (Destination Address)
-    string_to_hex(addr,strlen(addr),addr_hex,sizeof(addr_hex));
-    memcpy(current_packet_position,addr_hex,RADIO_HAL_TX_BYTE_1_LEN);
+    // 4 bytes tx address TODO : transfer string to hex
+    string_to_hex(addr,8,tx_addr_hex,4);
+    memcpy(current_packet_position,tx_addr_hex,RADIO_HAL_TX_BYTE_1_LEN);
     current_packet_position += RADIO_HAL_TX_BYTE_1_LEN;
 
-    addr_hex[4] = {0};
-    // 4 bytes rx address (Source Address)
-    string_to_hex(RX_ADDR_STRING,strlen(RX_ADDR_STRING),addr_hex,sizeof(addr_hex));
-    memcpy(current_packet_position,addr_hex,RADIO_HAL_TX_BYTE_5_LEN);
+    // 4 bytes rx address
+    memcpy(current_packet_position,rx_addr_hex,RADIO_HAL_TX_BYTE_5_LEN);
     current_packet_position += RADIO_HAL_TX_BYTE_5_LEN;
 
     // 1 byte padding
@@ -177,32 +160,6 @@ char *txpacket) {
     current_packet_position += RADIO_HAL_TX_BYTE_9_LEN;
 
     // 22 byte payload TODO : Encode with hamming code
-    {
-        unsigned char j = 0;
-        char *input_string_end = txpacket;
-        unsigned char input_length = strlen(txpacket);
-        unsigned char output_length = RADIO_HAL_PAYLOAD_WIDTH;
-        char *input_string;
-        unsigned char encoded_buffer[2];
-
-        input_string = input_string + input_length - 1;
-
-        while(1) {
-            if( (input_string - input_string_end) < 0 ) {
-                break;
-            }
-            if( j >= output_length ) {
-                break;
-            }
-            s4527438_lib_hamming_byte_encoder((*input_string),encoded_buffer);
-
-            memcpy(current_packet_position,encoded_buffer,RADIO_HAL_ONE_BYTE_ENCODED_OUTPUT_SIZE);
-            current_packet_position += RADIO_HAL_ONE_BYTE_ENCODED_OUTPUT_SIZE;
-
-            input_string--;
-            j++;
-        }
-    }
 
     nrf24l01plus_send(send_buffer);
     return;
