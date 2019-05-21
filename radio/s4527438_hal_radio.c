@@ -145,10 +145,6 @@ void s4527438_hal_radio_fsmprocessing(){
 	debug_printf("call s4527438_hal_radio_fsmprocessing() %d\r\n",__LINE__);
 
     target_state = &(state_handle_obj[halRadioFsmcurrentstate]);
-	debug_printf("call s4527438_hal_radio_fsmprocessing() %d\r\n",__LINE__);
-        (*(target_state->state_handle_first_enter))();
-	debug_printf("call s4527438_hal_radio_fsmprocessing() %d\r\n",__LINE__);
-        (*(target_state->state_handle_before_exit))();
 	debug_printf("halRadioFsmcurrentstat = <%d> , %d\r\n",halRadioFsmcurrentstate,__LINE__);
     (*(target_state->state_handle_fsm_process))();
 	debug_printf("call s4527438_hal_radio_fsmprocessing() %d\r\n",__LINE__);
@@ -240,7 +236,7 @@ static uint8_t hex_2_byte(unsigned char *input_2_char) {
 
 static void string_to_hex(char *input_string,unsigned char input_length,uint8_t *output_buffer,unsigned char output_length) {
     unsigned char j = 0;
-#if  0
+#if  1
     char *input_string_end = input_string;
 
     input_string = input_string + input_length - 2;
@@ -261,7 +257,7 @@ static void string_to_hex(char *input_string,unsigned char input_length,uint8_t 
         j++;
     }
 #endif
-#if 1
+#if 0
     char *input_string_end = NULL;
 
     input_string_end = input_string + input_length - 2;
@@ -366,7 +362,7 @@ char *txpacket) {
             memcpy(current_packet_position,encoded_buffer,RADIO_HAL_ONE_BYTE_ENCODED_OUTPUT_SIZE);
             current_packet_position += RADIO_HAL_ONE_BYTE_ENCODED_OUTPUT_SIZE;
 
-            input_string--;
+            input_string++;
             j++;
         }
 #endif
@@ -374,7 +370,7 @@ char *txpacket) {
 
     currentMode = TX_MODE;
 
-    halRadioFsmNextstate = S4527438_RADIO_IDLE_STATE;
+    //halRadioFsmNextstate = S4527438_RADIO_IDLE_STATE;
 
     //nrf24l01plus_send(send_buffer);
     return;
@@ -382,7 +378,7 @@ char *txpacket) {
 
 void s4527438_hal_radio_setfsmrx() {
     currentMode = RX_MODE;
-    halRadioFsmNextstate = S4527438_RADIO_IDLE_STATE;
+    //halRadioFsmNextstate = S4527438_RADIO_IDLE_STATE;
 }
 
 int s4527438_hal_radio_getrxstatus() {
@@ -496,11 +492,15 @@ static void WAITING_STATE_state_handle_fsm_process(void) {
         halRadioRxstatus = RX_STATUS_PACKET_RECEIVED;
     }
 
+#if 0
     if( currentMode == RX_MODE ) {
         halRadioFsmNextstate = S4527438_RADIO_RX_STATE;
     } else {
+#endif
         halRadioFsmNextstate = S4527438_RADIO_IDLE_STATE;
+#if 0
     }
+#endif
 }
 
 static void WAITING_STATE_state_handle_before_exit(void) {
