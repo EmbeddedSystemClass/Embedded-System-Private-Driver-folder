@@ -21,6 +21,13 @@
 
 /* Private typedef -----------------------------------------------------------*/
 
+typedef struct{
+    int state_num;
+    void (*state_handle_first_enter)(void);
+    void (*state_handle_fsm_process)(void);
+    void (*state_handle_before_exit)(void);
+} Radio_State_Obj_TypeStruct;
+
 /* Private define ------------------------------------------------------------*/
 #define RX_ADDR_STRING                      "45274389"
 
@@ -41,12 +48,49 @@
 
 #define RADIO_HAL_ONE_BYTE_ENCODED_OUTPUT_SIZE   2
 
+#define RX_STATUS_NO_PACKET_RECEIVED        0
+#define RX_STATUS_PACKET_RECEIVED           1
+
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
+int halRadioRxstatus = RX_STATUS_NO_PACKET_RECEIVED; 
 static int halRadioFsmcurrentstate = S4527438_RADIO_IDLE_STATE;
+static int halRadioFsmNextstate = S4527438_RADIO_IDLE_STATE;
+static Radio_State_Obj_TypeStruct state_handle_obj[S4527438_RADIO_STATE_MAX_VALUE + 1];
+static uint8_t send_buffer[RADIO_HAL_TOTAL_PACKET_WIDTH];
 
 /* Private function prototypes -----------------------------------------------*/
 void s4527438_hal_radio_init(void) {
+    Radio_State_Obj_TypeStruct * target_state = NULL;
+    /* Init private state handler */
+    /* IDLE_STATE */
+    target_state = &(state_handle_obj[S4527438_RADIO_IDLE_STATE]);
+    target_state->state_num = S4527438_RADIO_IDLE_STATE;
+    target_state->state_handle_first_enter = IDLE_STATE_state_handle_first_enter;
+    target_state->state_handle_fsm_process = IDLE_STATE_state_handle_fsm_process;
+    target_state->state_handle_before_exit = IDLE_STATE_state_handle_before_exit;
+
+    /* RX_STATE */
+    target_state = &(state_handle_obj[S4527438_RADIO_RX_STATE]);
+    target_state->state_num = S4527438_RADIO_RX_STATE;
+    target_state->state_handle_first_enter = RX_STATE_state_handle_first_enter;
+    target_state->state_handle_fsm_process = RX_STATE_state_handle_fsm_process;
+    target_state->state_handle_before_exit = RX_STATE_state_handle_before_exit;
+
+    /* TX_STATE */
+    target_state = &(state_handle_obj[S4527438_RADIO_TX_STATE]);
+    target_state->state_num = S4527438_RADIO_TX_STATE;
+    target_state->state_handle_first_enter = TX_STATE_state_handle_first_enter;
+    target_state->state_handle_fsm_process = TX_STATE_state_handle_fsm_process;
+    target_state->state_handle_before_exit = TX_STATE_state_handle_before_exit;
+
+    /* WAITING_STATE */
+    target_state = &(state_handle_obj[S4527438_RADIO_WAITING_STATE]);
+    target_state->state_num = S4527438_RADIO_WAITING_STATE;
+    target_state->state_handle_first_enter = WAITING_STATE_state_handle_first_enter;
+    target_state->state_handle_fsm_process = WAITING_STATE_state_handle_fsm_process;
+    target_state->state_handle_before_exit = WAITING_STATE_state_handle_before_exit;
+
     /* Initialise radio FSM */
     radio_fsm_init();
 
@@ -55,6 +99,22 @@ void s4527438_hal_radio_init(void) {
 }
 
 void s4527438_hal_radio_fsmprocessing(){
+    Radio_State_Obj_TypeStruct * target_state = NULL;
+
+    if( halRadioFsmNextstate != halRadioFsmcurrentstate ) {
+        /* Call previous exit handle */
+        target_state = &(state_handle_obj[halRadioFsmcurrentstate]);
+        (*(target_state->state_handle_before_exit))();
+
+        /* Call first enter handle */
+        target_state = &(state_handle_obj[halRadioFsmNextstate]);
+        (*(target_state->state_handle_first_enter))();
+
+        halRadioFsmcurrentstate = halRadioFsmNextstate;
+    }
+
+    target_state = &(state_handle_obj[halRadioFsmcurrentstate]);
+    (*(target_state->state_handle_fsm_process))();
 }
 
 void s4527438_hal_radio_setchan(unsigned char
@@ -146,7 +206,6 @@ static void string_to_hex(char *input_string,unsigned char input_length,uint8_t 
 void s4527438_hal_radio_sendpacket(char
 chan, unsigned char *addr, unsigned
 char *txpacket) {
-    uint8_t send_buffer[RADIO_HAL_TOTAL_PACKET_WIDTH];
     uint8_t *current_packet_position = NULL;
     /*
         RX_ADDR_STRING :45274389
@@ -176,7 +235,7 @@ char *txpacket) {
     memset(current_packet_position,RADIO_HAL_TX_BYTE_9_VALUE,RADIO_HAL_TX_BYTE_9_LEN);
     current_packet_position += RADIO_HAL_TX_BYTE_9_LEN;
 
-    // 22 byte payload TODO : Encode with hamming code
+    // 22 byte payload
     {
         unsigned char j = 0;
         char *input_string_end = txpacket;
@@ -204,6 +263,8 @@ char *txpacket) {
         }
     }
 
+    halRadioFsmNextstate = S4527438_RADIO_TX_STATE;
+
     nrf24l01plus_send(send_buffer);
     return;
 }
@@ -212,9 +273,38 @@ void s4527438_hal_radio_setfsmrx() {
 }
 
 int s4527438_hal_radio_getrxstatus() {
+    return halRadioRxstatus;
 }
 
 void s4527438_hal_radio_getpacket(unsigned char *rxpacket) {
 }
 
+static void IDLE_STATE_state_handle_first_enter(void) {
+    halRadioRxstatus = RX_STATUS_NO_PACKET_RECEIVED;
+}
+static void IDLE_STATE_state_handle_fsm_process(void) {
+}
+static void IDLE_STATE_state_handle_before_exit(void) {
+}
+
+static void RX_STATE_state_handle_first_enter(void) {
+}
+static void RX_STATE_state_handle_fsm_process(void) {
+}
+static void RX_STATE_state_handle_before_exit(void) {
+}
+
+static void TX_STATE_state_handle_first_enter(void) {
+}
+static void TX_STATE_state_handle_fsm_process(void) {
+}
+static void TX_STATE_state_handle_before_exit(void) {
+}
+
+static void WAITING_STATE_state_handle_first_enter(void) {
+}
+static void WAITING_STATE_state_handle_fsm_process(void) {
+}
+static void WAITING_STATE_state_handle_before_exit(void) {
+}
 

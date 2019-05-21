@@ -14,164 +14,104 @@
 #include "board.h"
 #include "stm32f4xx_hal.h"
 #include "debug_printf.h"
-#include "s4527438_hal_radio.h"
-#include "radio_fsm.h"
 #include "nrf24l01plus.h"
 
 /* Private typedef -----------------------------------------------------------*/
 
 /* Private define ------------------------------------------------------------*/
-#define RX_ADDR_STRING_DEFINE               45274389
-
-#define STRINGIFY_HELPER(A) #A
-#define STRINGIFY(...)  STRINGIFY_HELPER(__VA_ARGS__)
-#define RX_ADDR_STRING STRINGIFY(RX_ADDR_STRING_DEFINE) 
-
-#define HEX2PER_BYTE(c)     (*(c) >= 'A' ? (*(c) - 'A')+10 : (*(c)-'0'))
-#define HEX2BYTE(c)         (HEX2PER_BYTE(c)*16 + HEX2PER_BYTE(c+1))
-
-#define RADIO_HAL_TOTAL_PACKET_WIDTH        32
-#define RADIO_HAL_TX_RX_ADDR_WIDTH          4
-#define RADIO_HAL_PAYLOAD_WIDTH             22
-
-// TX packet format
-#define RADIO_HAL_TX_BYTE_0_VALUE           0xA1 
-#define RADIO_HAL_TX_BYTE_0_LEN             1
-
-#define RADIO_HAL_TX_BYTE_1_LEN             4 // TX addr
-
-#define RADIO_HAL_TX_BYTE_5_LEN             4 // RX addr
-
-#define RADIO_HAL_TX_BYTE_9_VALUE           0x00 
-#define RADIO_HAL_TX_BYTE_9_LEN             1
 
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
-static int halRadioFsmcurrentstate = S4527438_RADIO_IDLE_STATE;
 
 /* Private function prototypes -----------------------------------------------*/
-void s4527438_hal_radio_init(void) {
-    /* Initialise radio FSM */
-    radio_fsm_init();
+/**
+  * Implement Hamming Code + parity checking
+  * Hamming code is based on the following generator and parity check matrices
+  * G = [ 1 1 1 | 1 0 0 0 ;
+  *       1 0 1 | 0 1 0 0 ;
+  *       1 1 0 | 0 0 1 0 ;
+  *       0 1 1 | 0 0 0 1 ;
+  *
+  * hence H =
+  * [ 1 0 0 | 1 1 1 0 ;
+  *   0 1 0 | 1 0 1 1 ;
+  *   0 0 1 | 1 1 0 1 ];
+  *
+  * y = x * G, syn = H * y'
+  *
+  *
+  * NOTE: !! is used to get 1 out of non zeros
+  */
+static uint8_t hamming_hbyte_encoder(uint8_t in) {
 
-    /* set radio FSM state to IDLE */
-    radio_fsm_setstate(RADIO_FSM_IDLE_STATE);
+    uint8_t d0, d1, d2, d3;
+    uint8_t p0 = 0, h0, h1, h2;
+    uint8_t z;
+    uint8_t out;
+
+    /* extract bits */
+    d0 = !!(in & 0x1);
+    d1 = !!(in & 0x2);
+    d2 = !!(in & 0x4);
+    d3 = !!(in & 0x8);
+
+    /* calculate hamming parity bits */
+    h0 = d0 ^ d1 ^ d2;
+    h1 = d0 ^ d2 ^ d3;
+    h2 = d0 ^ d1 ^ d3;
+
+    /* generate out byte without parity bit P0 */
+    out = (h0 << 1) | (h1 << 2) | (h2 << 3) |
+        (d0 << 4) | (d1 << 5) | (d2 << 6) | (d3 << 7);
+
+    /* calculate even parity bit */
+    for (z = 1; z<8; z++)
+        p0 = p0 ^ !!(out & (1 << z));
+
+    out |= p0;
+
+    return(out);
 }
 
-void s4527438_hal_radio_fsmprocessing(){
+void s4527438_lib_hamming_byte_encoder(uint8_t input_byte,unsigned char *encoded_output) {
+         uint16_t out;
+
+     /* first encode D0..D3 (first 4 bits),
+      * then D4..D7 (second 4 bits).
+      */
+    encoded_output[0] = hamming_hbyte_encoder(input & 0xF);
+    encoded_output[1] = (hamming_hbyte_encoder(input >> 4) << 8);
 }
 
-void s4527438_hal_radio_setchan(unsigned char
-chan) {
-    nrf24l01plus_wr(NRF24L01P_RF_CH, chan);
-}
+/* xxxx 0111 */
+#define H0_PATTERN      0x07    
+/* xxxx 0010 */
+#define IS_H0_ERROR_MASK      0x02
 
-void s4527438_hal_radio_settxaddress(unsigned
-char *addr) {
-    nrf24l01plus_wb(NRF24L01P_WRITE_REG | NRF24L01P_TX_ADDR, addr, RADIO_HAL_TX_RX_ADDR_WIDTH);
-}
+/* xxxx 1101 */
+#define H1_PATTERN      0x0D
+/* xxxx 0100 */
+#define IS_H1_ERROR_MASK      0x04
 
-void s4527438_hal_radio_setrxaddress(unsigned
-char *addr) {
-    nrf24l01plus_wb(NRF24L01P_WRITE_REG | NRF24L01P_RX_ADDR_P0, addr, RADIO_HAL_TX_RX_ADDR_WIDTH);
-}
+/* xxxx 1011 */
+#define H2_PATTERN      0x0B
+/* xxxx 1000 */
+#define IS_H2_ERROR_MASK      0x08
 
-unsigned char s4527438_hal_radio_getchan() {
-    radio_fsm_register_read(NRF24L01P_RF_CH, &current_channel);
-    return current_channel;
-}
+/* xxxx 1110 */
+#define IS_ERROR_DETECT_MASK      0x0E
 
-void s4527438_hal_radio_gettxaddress(unsigned
-char *addr) {
-    if( addr == NULL ) {
-        return;
-    }
-    nrf24l01plus_rb(NRF24L01P_TX_ADDR, addr, RADIO_HAL_TX_RX_ADDR_WIDTH);
-}
-
-void s4527438_hal_radio_getrxaddress(unsigned
-char *addr) {
-    if( addr == NULL ) {
-        return;
-    }
-    nrf24l01plus_rb(NRF24L01P_RX_ADDR_P0, addr, RADIO_HAL_TX_RX_ADDR_WIDTH);
-}
-
-static uint8_t hex_2_byte(unsigned char *input_2_char) {
+/* 1111 0000 */
+/* EXTRA original 4 bits mask from byte */
+#define EXTRACK_4_BITS_MASK      0xF0
+uint8_t s4527438_lib_hamming_byte_decoder(uint8_t *input_byte) {
     uint8_t result = 0;
-    unsigned char target_char = (*input_2_char);
-    unsigned char target_char2 = (*(input_2_char + 1));
-    unsigned char i = 0;
 
-    for(i = 0;i < 2;i++) {
-        if( target_char >= '0' && target_char <= '9' ) {
-            result += (target_char - '0')
-        } else {
-            if( target_char >= 'A' && target_char <= 'F' ) {
-                result += (target_char - 'A') + 10;
-            } else if( target_char >= 'a' && target_char <= 'f' ) {
-                result += (target_char - 'a') + 10;
-            }
-        }
-        input_2_char++;
-        result *= 16;
+    /* First 4 bits : no error */
+    if( !(input_byte[0] & IS_ERROR_DETECT_MASK) ) {
+        result = (input_byte[0] & EXTRACK_4_BITS_MASK) >> 4;
+    } else {
     }
-}
-
-static void string_to_hex(unsigned char *input_string,unsigned char input_length,uint8_t *output_buffer,unsigned char output_length) {
-    unsigned char i = 0 , j = 0;
-
-    for(i = 0,j=0;i < (input_length - 1) && j < output_length;i += 2,input_string+=2,j+=1) {
-        output_buffer[j] = hex_2_byte(input_string);
-    }
-}
-
-void s4527438_hal_radio_sendpacket(char
-chan, unsigned char *addr, unsigned
-char *txpacket) {
-    uint8_t send_buffer[RADIO_HAL_TOTAL_PACKET_WIDTH];
-    uint8_t *current_packet_position = NULL;
-    uint8_t rx_addr_hex[] = {
-        HEX2BYTE(RX_ADDR_STRING+0),
-        HEX2BYTE(RX_ADDR_STRING+2),
-        HEX2BYTE(RX_ADDR_STRING+4),
-        HEX2BYTE(RX_ADDR_STRING+6),
-    };
-    uint8_t tx_addr_hex[4] = {0};
-
-    memset(send_buffer,0x00,sizeof(send_buffer));
-    current_packet_position = send_buffer;
-
-    // 1 byte
-    memset(current_packet_position,RADIO_HAL_TX_BYTE_0_VALUE,RADIO_HAL_TX_BYTE_0_LEN);
-    current_packet_position += RADIO_HAL_TX_BYTE_0_LEN;
-
-    // 4 bytes tx address TODO : transfer string to hex
-    string_to_hex(addr,8,tx_addr_hex,4);
-    memcpy(current_packet_position,tx_addr_hex,RADIO_HAL_TX_BYTE_1_LEN);
-    current_packet_position += RADIO_HAL_TX_BYTE_1_LEN;
-
-    // 4 bytes rx address
-    memcpy(current_packet_position,rx_addr_hex,RADIO_HAL_TX_BYTE_5_LEN);
-    current_packet_position += RADIO_HAL_TX_BYTE_5_LEN;
-
-    // 1 byte padding
-    memset(current_packet_position,RADIO_HAL_TX_BYTE_9_VALUE,RADIO_HAL_TX_BYTE_9_LEN);
-    current_packet_position += RADIO_HAL_TX_BYTE_9_LEN;
-
-    // 22 byte payload TODO : Encode with hamming code
-
-    nrf24l01plus_send(send_buffer);
-    return;
-}
-
-void s4527438_hal_radio_setfsmrx() {
-}
-
-int s4527438_hal_radio_getrxstatus() {
-}
-
-void s4527438_hal_radio_getpacket(unsigned char *rxpacket) {
 }
 
 
