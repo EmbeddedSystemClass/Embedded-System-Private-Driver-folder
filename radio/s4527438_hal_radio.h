@@ -16,14 +16,14 @@
 
 
 void s4527438_hal_radio_init(void);
-void s4527438_hal_radio_fsmprocessing();
+void s4527438_hal_radio_fsmprocessing(void);
 void s4527438_hal_radio_setchan(unsigned char
 chan);
 void s4527438_hal_radio_settxaddress(unsigned
 char *addr);
 void s4527438_hal_radio_setrxaddress(unsigned
 char *addr);
-unsigned char s4527438_hal_radio_getchan();
+unsigned char s4527438_hal_radio_getchan(void);
 void s4527438_hal_radio_gettxaddress(unsigned
 char *addr);
 void s4527438_hal_radio_getrxaddress(unsigned
@@ -31,8 +31,8 @@ char *addr);
 void s4527438_hal_radio_sendpacket(char
 chan, unsigned char *addr, unsigned
 char *txpacket);
-void s4527438_hal_radio_setfsmrx();
-int s4527438_hal_radio_getrxstatus();
+void s4527438_hal_radio_setfsmrx(void);
+int s4527438_hal_radio_getrxstatus(void);
 void s4527438_hal_radio_getpacket(unsigned
 char *rxpacket);
 

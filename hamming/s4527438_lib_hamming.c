@@ -14,7 +14,7 @@
 #include "board.h"
 #include "stm32f4xx_hal.h"
 #include "debug_printf.h"
-#include "nrf24l01plus.h"
+//#include "nrf24l01plus.h"
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -79,8 +79,14 @@ void s4527438_lib_hamming_byte_encoder(uint8_t input_byte,unsigned char *encoded
      /* first encode D0..D3 (first 4 bits),
       * then D4..D7 (second 4 bits).
       */
-    encoded_output[0] = hamming_hbyte_encoder(input & 0xF);
-    encoded_output[1] = (hamming_hbyte_encoder(input >> 4) << 8);
+#if 0
+    encoded_output[0] = hamming_hbyte_encoder(input_byte & 0xF);
+    encoded_output[1] = hamming_hbyte_encoder(input_byte >> 4);
+#endif
+#if 1
+    encoded_output[1] = hamming_hbyte_encoder(input_byte & 0xF);
+    encoded_output[0] = hamming_hbyte_encoder(input_byte >> 4);
+#endif
 }
 
 /* xxxx 0111 */
@@ -105,6 +111,7 @@ void s4527438_lib_hamming_byte_encoder(uint8_t input_byte,unsigned char *encoded
 /* EXTRA original 4 bits mask from byte */
 #define EXTRACK_4_BITS_MASK      0xF0
 uint8_t s4527438_lib_hamming_byte_decoder(uint8_t *input_byte) {
+#if 0
     uint8_t result = 0;
 
     /* First 4 bits : no error */
@@ -112,6 +119,7 @@ uint8_t s4527438_lib_hamming_byte_decoder(uint8_t *input_byte) {
         result = (input_byte[0] & EXTRACK_4_BITS_MASK) >> 4;
     } else {
     }
+#endif
 }
 
 
