@@ -129,9 +129,7 @@ void s4527438_hal_radio_init(void) {
 void s4527438_hal_radio_fsmprocessing(){
     Radio_State_Obj_TypeStruct * target_state = NULL;
 
-	debug_printf("call s4527438_hal_radio_fsmprocessing() %d\r\n",__LINE__);
     if( halRadioFsmNextstate != halRadioFsmcurrentstate ) {
-	    debug_printf("call s4527438_hal_radio_fsmprocessing() %d\r\n",__LINE__);
         /* Call previous exit handle */
         target_state = &(state_handle_obj[halRadioFsmcurrentstate]);
         (*(target_state->state_handle_before_exit))();
@@ -142,12 +140,8 @@ void s4527438_hal_radio_fsmprocessing(){
 
         halRadioFsmcurrentstate = halRadioFsmNextstate;
     }
-	debug_printf("call s4527438_hal_radio_fsmprocessing() %d\r\n",__LINE__);
-
     target_state = &(state_handle_obj[halRadioFsmcurrentstate]);
-	debug_printf("halRadioFsmcurrentstat = <%d> , %d\r\n",halRadioFsmcurrentstate,__LINE__);
     (*(target_state->state_handle_fsm_process))();
-	debug_printf("call s4527438_hal_radio_fsmprocessing() %d\r\n",__LINE__);
 }
 
 void s4527438_hal_radio_setchan(unsigned char
@@ -160,14 +154,6 @@ char *addr) {
     uint8_t addr_hex[4] = {0};
     int i = 0;
     string_to_hex(addr,strlen(addr),addr_hex,sizeof(addr_hex));
-
-	debug_printf("settxaddress: strlen(addr) = %d\r\n",strlen(addr));
-	debug_printf("settxaddress: ");
-	for (i = 0; i < RADIO_HAL_TX_RX_ADDR_WIDTH; i++) {
-    		debug_printf("%c(0x%x) ", addr_hex[i],addr_hex[i]);
-	}
-	debug_printf("\r\n");
-
     nrf24l01plus_wb(NRF24L01P_WRITE_REG | NRF24L01P_TX_ADDR, addr_hex, RADIO_HAL_TX_RX_ADDR_WIDTH);
 }
 
@@ -176,12 +162,6 @@ char *addr) {
     uint8_t addr_hex[4] = {0};
     int i = 0;
     string_to_hex(addr,strlen(addr),addr_hex,sizeof(addr_hex));
-	debug_printf("setrxaddress: strlen(addr) = %d\r\n",strlen(addr));
-	debug_printf("setrxaddress: ");
-	for (i = 0; i < RADIO_HAL_TX_RX_ADDR_WIDTH; i++) {
-    		debug_printf("%c(0x%x) ", addr_hex[i],addr_hex[i]);
-	}
-	debug_printf("\r\n");
     nrf24l01plus_wb(NRF24L01P_WRITE_REG | NRF24L01P_RX_ADDR_P0, addr_hex, RADIO_HAL_TX_RX_ADDR_WIDTH);
 }
 
@@ -369,16 +349,11 @@ char *txpacket) {
     }
 
     currentMode = TX_MODE;
-
-    //halRadioFsmNextstate = S4527438_RADIO_IDLE_STATE;
-
-    //nrf24l01plus_send(send_buffer);
     return;
 }
 
 void s4527438_hal_radio_setfsmrx() {
     currentMode = RX_MODE;
-    //halRadioFsmNextstate = S4527438_RADIO_IDLE_STATE;
 }
 
 int s4527438_hal_radio_getrxstatus() {
@@ -492,15 +467,7 @@ static void WAITING_STATE_state_handle_fsm_process(void) {
         halRadioRxstatus = RX_STATUS_PACKET_RECEIVED;
     }
 
-#if 0
-    if( currentMode == RX_MODE ) {
-        halRadioFsmNextstate = S4527438_RADIO_RX_STATE;
-    } else {
-#endif
-        halRadioFsmNextstate = S4527438_RADIO_IDLE_STATE;
-#if 0
-    }
-#endif
+    halRadioFsmNextstate = S4527438_RADIO_IDLE_STATE;
 }
 
 static void WAITING_STATE_state_handle_before_exit(void) {
