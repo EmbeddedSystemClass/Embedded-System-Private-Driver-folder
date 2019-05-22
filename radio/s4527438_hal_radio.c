@@ -52,6 +52,9 @@ typedef struct{
 #define RADIO_HAL_TX_BYTE_9_VALUE           0x00 
 #define RADIO_HAL_TX_BYTE_9_LEN             1
 
+#define NO_ENCODE_WIDTH                     (RADIO_HAL_TX_BYTE_0_LEN + RADIO_HAL_TX_BYTE_1_LEN + RADIO_HAL_TX_BYTE_5_LEN + RADIO_HAL_TX_BYTE_9_LEN )
+#define ENCODE_WIDTH                        (RADIO_HAL_TOTAL_PACKET_WIDTH - NO_ENCODE_WIDTH) 
+
 #define RADIO_HAL_ONE_BYTE_ENCODED_OUTPUT_SIZE   2
 
 #define RX_STATUS_NO_PACKET_RECEIVED        0
@@ -365,15 +368,11 @@ void s4527438_hal_radio_getpacket(unsigned char *rxpacket) {
 }
 
 static void IDLE_STATE_state_handle_first_enter(void) {
-	debug_printf("Enter <IDLE_STATE_state_handle_first_enter>\r\n");
     halRadioRxstatus = RX_STATUS_NO_PACKET_RECEIVED;
     memset(rxBuffer,0x00,RADIO_HAL_TOTAL_PACKET_WIDTH);
-    if (radio_fsm_getstate() == RADIO_FSM_IDLE_STATE) {
-        radio_fsm_setstate(RADIO_FSM_IDLE_STATE);
-    }
+    radio_fsm_setstate(RADIO_FSM_IDLE_STATE);
 }
 static void IDLE_STATE_state_handle_fsm_process(void) {
-	debug_printf("Enter <IDLE_STATE_state_handle_fsm_process>\r\n");
     // Get current channel, if radio FSM is in IDLE state
     if (radio_fsm_getstate() == RADIO_FSM_IDLE_STATE) {
         if( currentMode == RX_MODE ) {
@@ -391,14 +390,11 @@ static void IDLE_STATE_state_handle_fsm_process(void) {
     }   
 }
 static void IDLE_STATE_state_handle_before_exit(void) {
-	debug_printf("Enter <IDLE_STATE_state_handle_before_exit>\r\n");
 }
 
 static void RX_STATE_state_handle_first_enter(void) {
-	debug_printf("Enter <RX_STATE_state_handle_first_enter>\r\n");
 }
 static void RX_STATE_state_handle_fsm_process(void) {
-	debug_printf("Enter <RX_STATE_state_handle_fsm_process>\r\n");
     if ((radio_fsm_getstate() != RADIO_FSM_IDLE_STATE)
         && (radio_fsm_getstate() != RADIO_FSM_WAIT_STATE)) {
         halRadioFsmNextstate = S4527438_RADIO_IDLE_STATE;
@@ -415,15 +411,12 @@ static void RX_STATE_state_handle_fsm_process(void) {
     halRadioFsmNextstate = S4527438_RADIO_WAITING_STATE;
 }
 static void RX_STATE_state_handle_before_exit(void) {
-	debug_printf("Enter <RX_STATE_state_handle_before_exit>\r\n");
 }
 
 static void TX_STATE_state_handle_first_enter(void) {
-	debug_printf("Enter <TX_STATE_state_handle_first_enter>\r\n");
 }
 
 static void TX_STATE_state_handle_fsm_process(void) {
-	debug_printf("Enter <TX_STATE_state_handle_fsm_process>\r\n");
     if (radio_fsm_getstate() != RADIO_FSM_IDLE_STATE){
         halRadioFsmNextstate = S4527438_RADIO_IDLE_STATE;
         return;
@@ -443,26 +436,32 @@ static void TX_STATE_state_handle_fsm_process(void) {
 }
 
 static void TX_STATE_state_handle_before_exit(void) {
-	debug_printf("Enter <TX_STATE_state_handle_before_exit>\r\n");
 }
 
 static void WAITING_STATE_state_handle_first_enter(void) {
-	debug_printf("Enter <WAITING_STATE_state_handle_first_enter>\r\n");
 }
 
 static void WAITING_STATE_state_handle_fsm_process(void) {
-	debug_printf("Enter <WAITING_STATE_state_handle_fsm_process>\r\n");
-    int i = 0;
+    int i = 0,j = 0;
     if (radio_fsm_getstate() != RADIO_FSM_WAIT_STATE) {
         return;
     }
     // Check for received packet and display
     if (radio_fsm_read(rxBuffer) == RADIO_FSM_DONE) {
+        uint8_t decoded_buffer[ENCODE_WIDTH];
 
         debug_printf("Received: ");
-        for (i = 0; i < 32; i++) {
+        for (i = 0; i < NO_ENCODE_WIDTH; i++) {
             debug_printf("%x ", rxBuffer[i]);
         }
+        memset(decoded_buffer,0x00,sizeof(decoded_buffer));
+        for (j = 0; i < RADIO_HAL_TOTAL_PACKET_WIDTH; i+=2,j++) {
+            s4527438_lib_hamming_byte_decoder(&(rxBuffer[i]),&(decoded_buffer[j]));
+            debug_printf("%c", decoded_buffer[j]);
+        }
+        memcpy(&(rxBuffer[NO_ENCODE_WIDTH]),decoded_buffer,ENCODE_WIDTH);
+        // After decoded
+        
         debug_printf("\r\n");
         halRadioRxstatus = RX_STATUS_PACKET_RECEIVED;
     }
@@ -471,6 +470,5 @@ static void WAITING_STATE_state_handle_fsm_process(void) {
 }
 
 static void WAITING_STATE_state_handle_before_exit(void) {
-	debug_printf("Enter <WAITING_STATE_state_handle_before_exit>\r\n");
 }
 

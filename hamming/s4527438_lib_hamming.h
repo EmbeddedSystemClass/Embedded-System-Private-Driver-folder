@@ -15,6 +15,6 @@
 #define S4527438_LIB_HAMMING_H_
 
 void s4527438_lib_hamming_byte_encoder(uint8_t input_byte,unsigned char *encoded_output);
-uint8_t s4527438_lib_hamming_byte_decoder(uint8_t *input_byte);
+void s4527438_lib_hamming_byte_decoder(uint8_t *input_byte,uint8_t *decoded_byte_buffer);
 
 #endif /* S4527438_LIB_HAMMING_H_ */

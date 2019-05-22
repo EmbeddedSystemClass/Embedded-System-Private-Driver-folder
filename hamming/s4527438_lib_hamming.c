@@ -89,37 +89,80 @@ void s4527438_lib_hamming_byte_encoder(uint8_t input_byte,unsigned char *encoded
 #endif
 }
 
-/* xxxx 0111 */
-#define H0_PATTERN      0x07    
-/* xxxx 0010 */
-#define IS_H0_ERROR_MASK      0x02
+#define H00     0x01                    
+#define H03     0x08 
+#define H04     0x10 
+#define H05     0x20 
 
-/* xxxx 1101 */
-#define H1_PATTERN      0x0D
-/* xxxx 0100 */
-#define IS_H1_ERROR_MASK      0x04
+#define H11     0x02 
+#define H13     0x08 
+#define H15     0x20 
+#define H16     0x40 
 
-/* xxxx 1011 */
-#define H2_PATTERN      0x0B
-/* xxxx 1000 */
-#define IS_H2_ERROR_MASK      0x08
-
-/* xxxx 1110 */
-#define IS_ERROR_DETECT_MASK      0x0E
-
-/* 1111 0000 */
-/* EXTRA original 4 bits mask from byte */
-#define EXTRACK_4_BITS_MASK      0xF0
-uint8_t s4527438_lib_hamming_byte_decoder(uint8_t *input_byte) {
-#if 0
+#define H22     0x04
+#define H23     0x08 
+#define H24     0x10 
+#define H26     0x40 
+static uint8_t hamming_two_hbyte_decoder(uint8_t *encoded_input) {
+    uint8_t s0, s1, s2;
     uint8_t result = 0;
+    uint8_t target_byte = 0;
+    uint8_t error_digit_num = 0;
 
-    /* First 4 bits : no error */
-    if( !(input_byte[0] & IS_ERROR_DETECT_MASK) ) {
-        result = (input_byte[0] & EXTRACK_4_BITS_MASK) >> 4;
+    /* Extra high 4 bit from encoded_input[0] */
+    target_byte = (encoded_input[0] >> 1);
+
+    // Calculate H Row 0
+    s0 = (!!(target_byte & H00)) ^ (!!(target_byte & H03)) ^ (!!(target_byte & H04)) ^ (!!(target_byte & H05));
+    error_digit_num |= s0;
+
+    // Calculate H Row 1
+    s1 = (!!(target_byte & H11)) ^ (!!(target_byte & H13)) ^ (!!(target_byte & H15)) ^ (!!(target_byte & H16));
+    error_digit_num |= (s1 << 1);
+
+    // Calculate H Row 2
+    s2 = (!!(target_byte & H22)) ^ (!!(target_byte & H23)) ^ (!!(target_byte & H24)) ^ (!!(target_byte & H26));
+    error_digit_num |= (s2 << 2);
+
+    if( (s0 | s1 | s2) == 0 ) {
+        result  = result | (target_byte >> 3);
+        result  =   result << 4;
     } else {
+        // Correct error
+        target_byte = target_byte ^ (1 << (error_digit_num - 1));
+        result  = result | (target_byte >> 3);
+        result  =   result << 4;
     }
-#endif
+
+    /* Extra low 4 bit from encoded_input[1] */
+    target_byte = (encoded_input[1] >> 1);
+    error_digit_num = 0;
+
+    // Calculate H Row 0
+    s0 = (!!(target_byte & H00)) ^ (!!(target_byte & H03)) ^ (!!(target_byte & H04)) ^ (!!(target_byte & H05));
+    error_digit_num |= s0;
+
+    // Calculate H Row 1
+    s1 = (!!(target_byte & H11)) ^ (!!(target_byte & H13)) ^ (!!(target_byte & H15)) ^ (!!(target_byte & H16));
+    error_digit_num |= (s1 << 1);
+
+    // Calculate H Row 2
+    s2 = (!!(target_byte & H22)) ^ (!!(target_byte & H23)) ^ (!!(target_byte & H24)) ^ (!!(target_byte & H26));
+    error_digit_num |= (s2 << 2);
+
+    if( (s0 | s1 | s2) == 0 ) {
+        result  = result | (target_byte >> 3);
+    } else {
+        // Correct error
+        target_byte = target_byte ^ (1 << (error_digit_num - 1));
+        result  = result | (target_byte >> 3);
+    }
+
+    return result;
+}
+
+void s4527438_lib_hamming_byte_decoder(uint8_t *input_byte,uint8_t *decoded_byte_buffer) {
+    decoded_byte_buffer[0] = hamming_two_hbyte_decoder(input_byte);
 }
 
 
