@@ -47,7 +47,7 @@ int main(void)  {
     char RxChar;
     while(1) {
         RxChar = debug_getc();
-        if( RxChar == 'h' ) {
+        if( RxChar == 's' ) {
             break;
         }
     }
@@ -64,13 +64,6 @@ int main(void)  {
     unsigned char K = 0x4b;
     s4527438_lib_hamming_byte_encoder(K,encoded_buffer);
 	debug_printf("K = %x %x \r\n", encoded_buffer[0],encoded_buffer[1]);
-
-    while(1) {
-        RxChar = debug_getc();
-        if( RxChar == 's' ) {
-            break;
-        }
-    }
 
 	s4527438_hal_radio_setchan(TX_CHANNEL);
 	s4527438_hal_radio_settxaddress(TX_ADDR_STRING);
@@ -93,34 +86,21 @@ int main(void)  {
 	}
 	debug_printf("\r\n");
 
-
     while(1) {
         RxChar = debug_getc();
         if( RxChar == 'f' ) {
 	        s4527438_hal_radio_fsmprocessing();
             continue;
         }
-        if( RxChar == 'e' ) {
-            break;
+        if( RxChar == 'r' ) {
+	        s4527438_hal_radio_setfsmrx();
+            continue;
         }
-    }
-	s4527438_hal_radio_sendpacket(TX_CHANNEL, TX_ADDR_STRING, "ABCDEFGHIJK");
-    while(1) {
-        RxChar = debug_getc();
-        if( RxChar == 'f' ) {
-	        s4527438_hal_radio_fsmprocessing();
+        if( RxChar == 's' ) {
+	        s4527438_hal_radio_sendpacket(TX_CHANNEL, TX_ADDR_STRING, "ABCDEFGHIJK");
             continue;
         }
         if( RxChar == 'e' ) {
-            break;
-        }
-    }
-
-	s4527438_hal_radio_setfsmrx();
-
-    while(1) {
-        RxChar = debug_getc();
-        if( RxChar == 'c' ) {
             break;
         }
     }
