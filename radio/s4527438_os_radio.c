@@ -1,0 +1,439 @@
+/** 
+ **************************************************************
+ * @file mylib/s4527438_os_pantilt.c
+ * @author KO-CHEN CHI - s4527438
+ * @date 26032019
+ * @brief mylib pantilt driver
+ * REFERENCE: 
+ ***************************************************************
+ * EXTERNAL FUNCTIONS 
+ ***************************************************************
+ *************************************************************** 
+ */
+/* Includes ------------------------------------------------------------------*/
+#include "board.h"
+#include "stm32f4xx_hal_conf.h"
+#include "debug_printf.h"
+#include <string.h>
+#include <stdio.h>
+
+/* Scheduler includes. */
+#include "FreeRTOS.h"
+#include "task.h"
+#include "queue.h"
+#include "semphr.h"
+
+#include "s4527438_hal_radio.h"
+#include "s4527438_os_radio.h"
+
+/* Private typedef -----------------------------------------------------------*/
+typedef enum{
+    MESSAGE_TX_XYZ_TYPE,
+    MESSAGE_RX_XYZ_REPLY_TYPE,
+    MESSAGE_TX_JOIN_TYPE,
+    MESSAGE_RX_JOIN_REPLY_TYPE,
+    MESSAGE_TX_VACUUM_ACTION,
+    MESSAGE_RX_VACUUM_REPLY_TYPE,
+    MESSAGE_TX_KEEPALIVE_ACTION,
+    MESSAGE_RX_KEEPALIVE_REPLY_ACTION,
+    MESSAGE_RX_ORB_ACTION,
+} Message_Type_Enum;
+
+typedef enum{
+    IDLE,
+    NOT_REGISTERED,
+    OPERATING_COMMAND,
+} Sorter_Status_Type_Enum;
+
+typedef struct{
+    Sorter_Status_Type_Enum status;
+    uint32_t    x_coordinate;
+    uint32_t    y_coordinate;
+    uint32_t    z_coordinate;
+    
+    uint8_t     addr[RADIO_HAL_TX_RX_ADDR_STRING_WIDTH];
+}Sorter_handler_Type;
+
+struct Message {    /* Message consists of sequence number and payload string */
+    Message_Type_Enum   MessageType;
+    Message_Vacuum_Action_Enum vacuum_action;
+    uint32_t    x_coordinate;
+    uint32_t    y_coordinate;
+    uint32_t    z_coordinate;
+};
+/* Private define ------------------------------------------------------------*/
+#define mainRADIO_TASK_PRIORITY               ( tskIDLE_PRIORITY + 4 )
+#define mainRADIO_TASK_STACK_SIZE     ( configMINIMAL_STACK_SIZE * 16 )
+
+#define QUEUE_BLOCK_TIME_AS_FSM_PERIOD_TICK 100
+
+#define COM_BASE_TX_SOURCE_ADDR_STRING                        "45274389"
+#define COM_BASE_TX_DESTINATION_ADDR_STRING                   "11223345"
+#define COM_BASE_TX_CHANNEL                                   45	
+
+#define SORTER_TX_SOURCE_ADDR_STRING                            "45274389"
+
+#define SORTER_1_TX_DESTINATION_ADDR_STRING                   "80000055"
+#define SORTER_1_TX_CHANNEL                                   55
+
+#define SORTER_2_TX_DESTINATION_ADDR_STRING                   "80000057"
+#define SORTER_2_TX_CHANNEL                                   57
+
+#define SORTER_3_TX_DESTINATION_ADDR_STRING                   "80000058"
+#define SORTER_3_TX_CHANNEL                                   58
+
+#define SORTER_4_TX_DESTINATION_ADDR_STRING                   "80000059"
+#define SORTER_4_TX_CHANNEL                                   59
+
+#define ORB_RX_SOURCE_ADDR_STRING                        "45274389"
+
+#define ORB_1_RX_DESTINATION_ADDR_STRING                   "90000051"
+#define ORB_1_RX_CHANNEL                                   51
+
+#define ORB_2_RX_DESTINATION_ADDR_STRING                   "90000052"
+#define ORB_2_RX_CHANNEL                                   52
+
+#define ORB_3_RX_DESTINATION_ADDR_STRING                   "90000053"
+#define ORB_3_RX_CHANNEL                                   53
+
+#define ORB_4_RX_DESTINATION_ADDR_STRING                   "90000054"
+#define ORB_4_RX_CHANNEL                                   54
+
+#define	RADIO_HAL_TOTAL_PACKET_WIDTH		32
+
+#define RADIO_RX_RETRY_COUNT                100
+#define RADIO_RX_RETRY_COUNT_DELAY          20
+/* Private macro -------------------------------------------------------------*/
+/* Private variables ---------------------------------------------------------*/
+static TaskHandle_t xTaskRadioOsHandle;
+QueueHandle_t s4527438QueueSorterPacketSend;
+static QueueSetHandle_t xQueueSet;
+
+static Sorter_handler_Type sorter_handler;
+/* Private function prototypes -----------------------------------------------*/
+static void RadioTask( void );
+
+void s4527438_os_radio_init(void) {
+
+    s4527438QueueSorterPacketSend = xQueueCreate(10, sizeof(struct Message));       /* Create queue of length 10 Message items */
+
+    /* Create QueueSet */
+    xQueueSet = xQueueCreateSet(10 * 2 );    //Size of Queueset = Size of Queue (10) * 2 
+
+    xQueueAddToSet(s4527438QueueSorterPacketSend, xQueueSet);
+
+    xTaskCreate( (void *) &RadioTask, (const signed char *) "RadioTask", mainRADIO_TASK_STACK_SIZE, NULL, mainRADIO_TASK_PRIORITY, &xTaskRadioOsHandle );
+}
+
+void s4527438_os_radio_send_join_packet(void) {
+    struct Message SendMessage;
+
+    SendMessage.MessageType = MESSAGE_TX_JOIN_TYPE;
+
+    if (s4527438QueueSorterPacketSend != NULL) { /* Check if queue exists */
+        xQueueSend(s4527438QueueSorterPacketSend, ( void * ) &SendMessage, ( portTickType ) 0 );
+    }
+
+    SendMessage.MessageType = MESSAGE_RX_JOIN_REPLY_TYPE;
+
+    if (s4527438QueueSorterPacketSend != NULL) { /* Check if queue exists */
+        xQueueSend(s4527438QueueSorterPacketSend, ( void * ) &SendMessage, ( portTickType ) 0 );
+    }
+}
+
+void s4527438_os_radio_send_xyz_packet(uint32_t x_coordinate, uint32_t y_coordinate, uint32_t z_coordinate) {
+    struct Message SendMessage;
+
+    if( sorter_handler.status == NOT_REGISTERED ) {
+        s4527438_os_radio_send_join_packet();
+    }
+
+    SendMessage.MessageType = MESSAGE_TX_XYZ_TYPE;
+    SendMessage.x_coordinate = x_coordinate;
+    SendMessage.y_coordinate = y_coordinate;
+    SendMessage.z_coordinate = z_coordinate;
+
+    if (s4527438QueueSorterPacketSend != NULL) { /* Check if queue exists */
+        xQueueSend(s4527438QueueSorterPacketSend, ( void * ) &SendMessage, ( portTickType ) 0 );
+    }
+
+    SendMessage.MessageType = MESSAGE_RX_XYZ_REPLY_TYPE;
+
+    if (s4527438QueueSorterPacketSend != NULL) { /* Check if queue exists */
+        xQueueSend(s4527438QueueSorterPacketSend, ( void * ) &SendMessage, ( portTickType ) 0 );
+    }
+}
+
+void s4527438_os_radio_send_vacuum_packet(Message_Vacuum_Action_Enum vacuum_action) {
+    struct Message SendMessage;
+
+    if( sorter_handler.status == NOT_REGISTERED ) {
+        s4527438_os_radio_send_join_packet();
+    }
+
+    SendMessage.MessageType = MESSAGE_TX_VACUUM_ACTION;
+    SendMessage.vacuum_action = vacuum_action;
+
+    if (s4527438QueueSorterPacketSend != NULL) { /* Check if queue exists */
+        xQueueSend(s4527438QueueSorterPacketSend, ( void * ) &SendMessage, ( portTickType ) 0 );
+    }
+
+    SendMessage.MessageType = MESSAGE_RX_VACUUM_REPLY_TYPE;
+
+    if (s4527438QueueSorterPacketSend != NULL) { /* Check if queue exists */
+        xQueueSend(s4527438QueueSorterPacketSend, ( void * ) &SendMessage, ( portTickType ) 0 );
+    }
+}
+
+static void configure_sorter_tx_setting(void) {
+	s4527438_hal_radio_setchan(COM_BASE_TX_CHANNEL);
+	s4527438_hal_radio_settxaddress(COM_BASE_TX_DESTINATION_ADDR_STRING);
+	s4527438_hal_radio_setrxaddress(COM_BASE_TX_SOURCE_ADDR_STRING);
+}
+
+static void configure_sorter_rx_setting(void) {
+	s4527438_hal_radio_setchan(COM_BASE_TX_CHANNEL);
+	s4527438_hal_radio_settxaddress(COM_BASE_TX_DESTINATION_ADDR_STRING);
+	s4527438_hal_radio_setrxaddress(COM_BASE_TX_SOURCE_ADDR_STRING);
+}
+
+static void configure_orb_rx_setting(void) {
+	s4527438_hal_radio_setchan(ORB_1_RX_CHANNEL);
+	s4527438_hal_radio_settxaddress(ORB_1_RX_DESTINATION_ADDR_STRING);
+	s4527438_hal_radio_setrxaddress(ORB_RX_SOURCE_ADDR_STRING);
+}
+
+static void RadioTask( void ) {
+
+    struct Message RecvMessage;
+    QueueSetMemberHandle_t xActivatedMember;
+    int currentAngle = 0;
+    uint8_t tx_string[12] = {0};
+    int i = 0;
+
+    /* Init radio hal */
+    // Harware init
+    s4527438_hal_radio_init();
+
+    sorter_handler.status = NOT_REGISTERED;
+    memcpy(sorter_handler.addr,COM_BASE_TX_DESTINATION_ADDR_STRING,sizeof(sorter_handler.addr));
+
+    for (;;) {
+
+        xActivatedMember = xQueueSelectFromSet(xQueueSet, QUEUE_BLOCK_TIME_AS_FSM_PERIOD_TICK);
+
+        /* Which set member was selected?  Receives/takes can use a block time
+        of zero as they are guaranteed to pass because xQueueSelectFromSet()
+        would not have returned the handle unless something was available. */
+        if (xActivatedMember == s4527438QueueSorterPacketSend) {
+
+            /* Receive item */
+            xQueueReceive( s4527438QueueSorterPacketSend, &RecvMessage, 0 );
+
+            switch(RecvMessage.MessageType) {
+                case MESSAGE_TX_XYZ_TYPE:
+                    configure_sorter_tx_setting();
+                    snprintf(tx_string,sizeof(tx_string),"XYZ%03d%03d%02d",RecvMessage.x_coordinate,RecvMessage.y_coordinate,RecvMessage.z_coordinate);
+                    s4527438_hal_radio_sendpacket(0,sorter_handler.addr,tx_string);
+
+                    while(1){
+                        s4527438_hal_radio_fsmprocessing();
+                        if(s4527438_hal_radio_get_current_fsm_state() == S4527438_RADIO_IDLE_STATE ){
+                            break;
+                        }
+                        vTaskDelay(10);
+                    }
+                    break;
+                case MESSAGE_RX_XYZ_REPLY_TYPE:
+                    s4527438_hal_radio_setfsmrx();
+                    while(1){
+                        s4527438_hal_radio_fsmprocessing();
+                        if(s4527438_hal_radio_get_current_fsm_state() == S4527438_RADIO_IDLE_STATE ){
+                            break;
+                        }
+                        vTaskDelay(10);
+                    }
+
+                    {
+                        uint8_t rx_buffer[RADIO_HAL_TOTAL_PACKET_WIDTH];
+                        memset(rx_buffer,0x00,sizeof(rx_buffer));
+                        for(i = 0;i < RADIO_RX_RETRY_COUNT;i++){
+                            s4527438_hal_radio_fsmprocessing();
+	                        if( s4527438_hal_radio_getrxstatus() == RX_STATUS_PACKET_RECEIVED ) {
+                                s4527438_hal_radio_getpacket(rx_buffer);
+                                if( strcmp(&(rx_buffer[RADIO_HAL_HEADER_WIDTH]),"A C K") == 0 ) {
+                                    break;
+                                }
+                            }
+                            vTaskDelay(RADIO_RX_RETRY_COUNT_DELAY);
+                        }
+                    }
+                    break;
+                case MESSAGE_TX_JOIN_TYPE:
+                    configure_sorter_tx_setting();
+                    s4527438_hal_radio_sendpacket(0,sorter_handler.addr,"JOIN");
+
+                    while(1){
+                        s4527438_hal_radio_fsmprocessing();
+                        if(s4527438_hal_radio_get_current_fsm_state() == S4527438_RADIO_IDLE_STATE ){
+                            break;
+                        }
+                        vTaskDelay(10);
+                    }
+                    break;
+                case MESSAGE_RX_JOIN_REPLY_TYPE:
+                    s4527438_hal_radio_setfsmrx();
+
+                    while(1){
+                        s4527438_hal_radio_fsmprocessing();
+                        if(s4527438_hal_radio_get_current_fsm_state() == S4527438_RADIO_IDLE_STATE ){
+                            break;
+                        }
+                        vTaskDelay(10);
+                    }
+
+                    {
+                        uint8_t rx_buffer[RADIO_HAL_TOTAL_PACKET_WIDTH];
+                        memset(rx_buffer,0x00,sizeof(rx_buffer));
+                        for(i = 0;i < RADIO_RX_RETRY_COUNT;i++){
+                            s4527438_hal_radio_fsmprocessing();
+	                        if( s4527438_hal_radio_getrxstatus() == RX_STATUS_PACKET_RECEIVED ) {
+                                s4527438_hal_radio_getpacket(rx_buffer);
+                                if( strcmp(&(rx_buffer[RADIO_HAL_HEADER_WIDTH]),"A C K") == 0 ) {
+                                    sorter_handler.status = IDLE;
+                                    break;
+                                }
+                            }
+                            vTaskDelay(RADIO_RX_RETRY_COUNT_DELAY);
+                        }
+                    }
+                    break;
+                case MESSAGE_TX_VACUUM_ACTION:
+                    configure_sorter_tx_setting();
+                    if(RecvMessage.vacuum_action == VACUUM_ON) {
+                        s4527438_hal_radio_sendpacket(0,sorter_handler.addr,"VON");
+                    } else if( RecvMessage.vacuum_action == VACUUM_OFF ) {
+                        s4527438_hal_radio_sendpacket(0,sorter_handler.addr,"VOFF");
+                    }
+                    while(1){
+                        s4527438_hal_radio_fsmprocessing();
+                        if(s4527438_hal_radio_get_current_fsm_state() == S4527438_RADIO_IDLE_STATE ){
+                            break;
+                        }
+                        vTaskDelay(10);
+                    }
+                    break;
+                case MESSAGE_RX_VACUUM_REPLY_TYPE:
+                    while(1){
+                        s4527438_hal_radio_fsmprocessing();
+                        if(s4527438_hal_radio_get_current_fsm_state() == S4527438_RADIO_IDLE_STATE ){
+                            break;
+                        }
+                        vTaskDelay(10);
+                    }
+
+                    {
+                        uint8_t rx_buffer[RADIO_HAL_TOTAL_PACKET_WIDTH];
+                        memset(rx_buffer,0x00,sizeof(rx_buffer));
+                        for(i = 0;i < RADIO_RX_RETRY_COUNT;i++){
+                            s4527438_hal_radio_fsmprocessing();
+	                        if( s4527438_hal_radio_getrxstatus() == RX_STATUS_PACKET_RECEIVED ) {
+                                s4527438_hal_radio_getpacket(rx_buffer);
+                                if( strcmp(&(rx_buffer[RADIO_HAL_HEADER_WIDTH]),"A C K") == 0 ) {
+                                    break;
+                                }
+                            }
+                            vTaskDelay(RADIO_RX_RETRY_COUNT_DELAY);
+                        }
+                    }
+                    break;
+                case MESSAGE_TX_KEEPALIVE_ACTION:
+                    configure_sorter_tx_setting();
+                    s4527438_hal_radio_sendpacket(0,sorter_handler.addr,"JOIN");
+                    while(1){
+                        s4527438_hal_radio_fsmprocessing();
+                        if(s4527438_hal_radio_get_current_fsm_state() == S4527438_RADIO_IDLE_STATE ){
+                            break;
+                        }
+                        vTaskDelay(10);
+                    }
+                    break;
+                case MESSAGE_RX_KEEPALIVE_REPLY_ACTION:
+                    s4527438_hal_radio_setfsmrx();
+                    while(1){
+                        s4527438_hal_radio_fsmprocessing();
+                        if(s4527438_hal_radio_get_current_fsm_state() == S4527438_RADIO_IDLE_STATE ){
+                            break;
+                        }
+                        vTaskDelay(10);
+                    }
+
+                    {
+                        uint8_t rx_buffer[RADIO_HAL_TOTAL_PACKET_WIDTH];
+                        memset(rx_buffer,0x00,sizeof(rx_buffer));
+                        for(i = 0;i < RADIO_RX_RETRY_COUNT;i++){
+                            s4527438_hal_radio_fsmprocessing();
+	                        if( s4527438_hal_radio_getrxstatus() == RX_STATUS_PACKET_RECEIVED ) {
+                                s4527438_hal_radio_getpacket(rx_buffer);
+                                if( strcmp(&(rx_buffer[RADIO_HAL_HEADER_WIDTH]),"A C K") == 0 ) {
+                                    if( sorter_handler.status == OPERATING_COMMAND ) {
+                                        sorter_handler.status = IDLE;
+                                    }
+                                    break;
+                                }
+                            }
+                            vTaskDelay(RADIO_RX_RETRY_COUNT_DELAY);
+                        }
+                    }
+                    break;
+                case MESSAGE_RX_ORB_ACTION:
+                    configure_orb_rx_setting();
+                    s4527438_hal_radio_setfsmrx();
+                    while(1){
+                        s4527438_hal_radio_fsmprocessing();
+                        if(s4527438_hal_radio_get_current_fsm_state() == S4527438_RADIO_IDLE_STATE ){
+                            break;
+                        }
+                        vTaskDelay(10);
+                    }
+                    {
+                        uint8_t rx_buffer[RADIO_HAL_TOTAL_PACKET_WIDTH];
+                        memset(rx_buffer,0x00,sizeof(rx_buffer));
+                        for(i = 0;i < RADIO_RX_RETRY_COUNT;i++){
+                            s4527438_hal_radio_fsmprocessing();
+	                        if( s4527438_hal_radio_getrxstatus() == RX_STATUS_PACKET_RECEIVED ) {
+                                s4527438_hal_radio_getpacket(rx_buffer);
+                                if( strcmp(&(rx_buffer[RADIO_HAL_HEADER_WIDTH]),"A C K") == 0 ) {
+                                    if( sorter_handler.status == OPERATING_COMMAND ) {
+                                        sorter_handler.status = IDLE;
+                                    }
+                                    break;
+                                }
+                            }
+                            vTaskDelay(RADIO_RX_RETRY_COUNT_DELAY);
+                        }
+                    }
+
+                    break;
+            }
+
+#if 0
+#ifdef DEBUG
+            portENTER_CRITICAL();
+            debug_printf("Received: angle = %d\n\r", RecvMessage.angle);
+            portEXIT_CRITICAL();
+#endif
+#endif
+
+        }
+
+        s4527438_hal_radio_fsmprocessing();
+
+        /* Delay for 10ms */
+        vTaskDelay(1);
+        
+    }
+}
+
+
+

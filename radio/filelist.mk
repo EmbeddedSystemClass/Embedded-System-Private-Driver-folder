@@ -14,3 +14,5 @@ CFLAGS += -I$(RADIO_MYLIBPATH)
 
 # List all c files locations that must be included (use space as separate e.g. LIBSRCS += path_to/file1.c path_to/file2.c)
 LIBSRCS += $(RADIO_MYLIBPATH)/s4527438_hal_radio.c
+LIBSRCS += $(RADIO_MYLIBPATH)/s4527438_os_radio.c
+LIBSRCS += $(RADIO_MYLIBPATH)/s4527438_cli_radio.c

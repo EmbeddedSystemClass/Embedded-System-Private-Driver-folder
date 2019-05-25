@@ -18,6 +18,7 @@
 #include "s4527438_lib_hamming.h"
 #include "radio_fsm.h"
 #include "nrf24l01plus.h"
+#include <string.h>
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -34,11 +35,10 @@ typedef struct{
 } Radio_State_Obj_TypeStruct;
 
 /* Private define ------------------------------------------------------------*/
-#define RX_ADDR_STRING                      "45274389"
-#define TX_ADDR_STRING                      "11223354"
+#define DEFAULT_RX_ADDR_STRING                      "45274389"
+#define DEFAULT_TX_ADDR_STRING                      "11223354"
+#define DEFAULT_TX_CHANNEL			                45	
 
-#define RADIO_HAL_TOTAL_PACKET_WIDTH        32
-#define RADIO_HAL_TX_RX_ADDR_WIDTH          4
 #define RADIO_HAL_PAYLOAD_WIDTH             22
 
 // TX packet format
@@ -57,12 +57,13 @@ typedef struct{
 
 #define RADIO_HAL_ONE_BYTE_ENCODED_OUTPUT_SIZE   2
 
-#define RX_STATUS_NO_PACKET_RECEIVED        0
-#define RX_STATUS_PACKET_RECEIVED           1
+#define TX_STATUS_BUFFER_WAITING_SEND   0
+#define TX_STATUS_BUFFER_EMPTY          1
 
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
 int halRadioRxstatus = RX_STATUS_NO_PACKET_RECEIVED; 
+int halRadioTxstatus = TX_STATUS_BUFFER_WAITING_SEND; 
 static int halRadioFsmcurrentstate = S4527438_RADIO_IDLE_STATE;
 static int halRadioFsmNextstate = S4527438_RADIO_IDLE_STATE;
 static Radio_State_Obj_TypeStruct state_handle_obj[S4527438_RADIO_STATE_MAX_VALUE + 1];
@@ -124,6 +125,9 @@ void s4527438_hal_radio_init(void) {
     halRadioFsmNextstate = S4527438_RADIO_IDLE_STATE;
     /* Initialise radio FSM */
     radio_fsm_init();
+
+    halRadioRxstatus = RX_STATUS_NO_PACKET_RECEIVED; 
+    halRadioTxstatus = TX_STATUS_BUFFER_EMPTY; 
 
     /* set radio FSM state to IDLE */
     radio_fsm_setstate(RADIO_FSM_IDLE_STATE);
@@ -267,8 +271,11 @@ void s4527438_hal_radio_sendpacket(char
 chan, unsigned char *addr, unsigned
 char *txpacket) {
     uint8_t *current_packet_position = NULL;
+    if( halRadioTxstatus == TX_STATUS_BUFFER_WAITING_SEND ) {
+        return;
+    }
     /*
-        RX_ADDR_STRING :45274389
+        DEFAULT_RX_ADDR_STRING :45274389
         
     */
     uint8_t addr_hex[4] = {0};
@@ -281,13 +288,17 @@ char *txpacket) {
     current_packet_position += RADIO_HAL_TX_BYTE_0_LEN;
 
     // 4 bytes tx address (Destination Address)
-    string_to_hex(addr,strlen(addr),addr_hex,sizeof(addr_hex));
+    if( addr == NULL ) {
+        string_to_hex(DEFAULT_TX_ADDR_STRING,strlen(DEFAULT_TX_ADDR_STRING),addr_hex,sizeof(addr_hex));
+    } else {
+        string_to_hex(addr,strlen(addr),addr_hex,sizeof(addr_hex));
+    }
     memcpy(current_packet_position,addr_hex,RADIO_HAL_TX_BYTE_1_LEN);
     current_packet_position += RADIO_HAL_TX_BYTE_1_LEN;
 
     memset(addr_hex,0x00,sizeof(addr_hex));
     // 4 bytes rx address (Source Address)
-    string_to_hex(RX_ADDR_STRING,strlen(RX_ADDR_STRING),addr_hex,sizeof(addr_hex));
+    string_to_hex(DEFAULT_RX_ADDR_STRING,strlen(DEFAULT_RX_ADDR_STRING),addr_hex,sizeof(addr_hex));
     memcpy(current_packet_position,addr_hex,RADIO_HAL_TX_BYTE_5_LEN);
     current_packet_position += RADIO_HAL_TX_BYTE_5_LEN;
 
@@ -351,6 +362,7 @@ char *txpacket) {
 #endif
     }
 
+    halRadioTxstatus = TX_STATUS_BUFFER_WAITING_SEND;
     currentMode = TX_MODE;
     return;
 }
@@ -365,11 +377,18 @@ int s4527438_hal_radio_getrxstatus() {
 
 void s4527438_hal_radio_getpacket(unsigned char *rxpacket) {
     memcpy(rxpacket,rxBuffer,RADIO_HAL_TOTAL_PACKET_WIDTH);
+    halRadioRxstatus = RX_STATUS_PACKET_COPIED_BY_USER;
+}
+
+int s4527438_hal_radio_get_current_fsm_state(void) {
+    return halRadioFsmcurrentstate;
 }
 
 static void IDLE_STATE_state_handle_first_enter(void) {
-    halRadioRxstatus = RX_STATUS_NO_PACKET_RECEIVED;
-    memset(rxBuffer,0x00,RADIO_HAL_TOTAL_PACKET_WIDTH);
+    if( halRadioRxstatus == RX_STATUS_PACKET_COPIED_BY_USER ) {
+        halRadioRxstatus = RX_STATUS_NO_PACKET_RECEIVED;
+        memset(rxBuffer,0x00,RADIO_HAL_TOTAL_PACKET_WIDTH);
+    }
     radio_fsm_setstate(RADIO_FSM_IDLE_STATE);
 }
 static void IDLE_STATE_state_handle_fsm_process(void) {
@@ -378,7 +397,9 @@ static void IDLE_STATE_state_handle_fsm_process(void) {
         if( currentMode == RX_MODE ) {
             halRadioFsmNextstate = S4527438_RADIO_RX_STATE;
         } else {
-            halRadioFsmNextstate = S4527438_RADIO_TX_STATE;
+            if( halRadioTxstatus == TX_STATUS_BUFFER_WAITING_SEND ) {
+                halRadioFsmNextstate = S4527438_RADIO_TX_STATE;
+            }
         }
 
     } else {
@@ -432,6 +453,8 @@ static void TX_STATE_state_handle_fsm_process(void) {
     /* Send packet - radio FSM will automatically go to IDLE state, after write completes. */
     radio_fsm_write(send_buffer);
 
+    halRadioTxstatus = TX_STATUS_BUFFER_EMPTY;
+    memset(send_buffer,0x00,sizeof(send_buffer));
     halRadioFsmNextstate = S4527438_RADIO_IDLE_STATE;
 }
 

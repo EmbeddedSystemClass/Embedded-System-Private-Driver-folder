@@ -24,7 +24,8 @@
 
 #include "FreeRTOS_CLI.h"
 
-#include "s4527438_cli_pantilt.h"
+//#include "s4527438_cli_pantilt.h"
+#include "s4527438_cli_radio.h"
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
@@ -43,6 +44,9 @@ void s4527438_cli_init(void) {
 #ifdef S4527438_CLI_PANTILT_H_
     s4527438_cli_pantilt_init();
 #endif
+//#ifndef S4527438_CLI_RADIO_H_
+    s4527438_cli_radio_init();
+//#endif
 
     xTaskCreate( (void *) &CLI_Task, (const signed char *) "CLI", mainCLI_TASK_STACK_SIZE, NULL, mainCLI_PRIORITY, &xTaskCliHandle );
 }

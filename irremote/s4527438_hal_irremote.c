@@ -30,6 +30,8 @@ typedef struct{
     int current_tick_rising_detected;
 
     unsigned char is_ever_receive_event_leading;
+    unsigned char   received_byte_buffer[4];
+    unsigned char   received_bit_index;
 }Wave_Recording_TypeStruct;
 
 /* Private define ------------------------------------------------------------*/
@@ -50,7 +52,24 @@ typedef struct{
                                             (handle)->last_tick_rising_detected = 0;\
                                             (handle)->current_tick_rising_detected = 0;\
                                             (handle)->is_ever_receive_event_leading = 0;\
+                                            memset((handle)->received_byte_buffer,0x00,sizeof((handle)->received_byte_buffer));\
+                                            (handle)->received_bit_index = 0;\
                                         }
+
+#define WAVE_RECORDING_RESET(handle)     {\
+                                            memset((handle)->received_byte_buffer,0x00,sizeof((handle)->received_byte_buffer));\
+                                            (handle)->received_bit_index = 0;\
+                                        }
+
+#define WAVE_RECORDING_SET_BIT_ONE(handle)  {\
+                                                ((handle)->received_byte_buffer[(((handle)->received_bit_index)/8)]) |= (1 << (((handle)->received_bit_index)%8) );\
+                                                ((handle)->received_bit_index)++;\
+                                            }
+
+#define WAVE_RECORDING_SET_BIT_ZEROE(handle)  {\
+                                                ((handle)->received_byte_buffer[(((handle)->received_bit_index)/8)]) &= ((1 << (((handle)->received_bit_index)%8) ) ^ 0xFF);\
+                                                ((handle)->received_bit_index)++;\
+                                            }
 
 #define WAVE_RECORDING_SET_CURRENT_RISING_TICK(handle,value)     {\
                                             (handle)->last_tick_rising_detected = (handle)->current_tick_rising_detected;\
@@ -60,6 +79,12 @@ typedef struct{
                                             (handle)->last_tick_falling_detected = (handle)->current_tick_falling_detected;\
                                             (handle)->current_tick_falling_detected = value;\
                                         }
+
+#define WAVE_PATTERN_LEADING_EVENT_POSITIVE_PERCENT_NUM     66
+#define WAVE_PATTERN_BIT_ONE_EVENT_POSITIVE_PERCENT_NUM     25
+#define WAVE_PATTERN_BIT_ZEROE_EVENT_POSITIVE_PERCENT_NUM   50
+
+#define WAVE_PATTERN_COMPARE_NUM                            2
 /* Definition for TIMx clock resources */
 
 /* Private macro -------------------------------------------------------------*/
@@ -106,7 +131,8 @@ void s4527438_hal_irremote_init(void) {
     TIM_Init.Init.CounterMode = TIM_COUNTERMODE_UP; //Set timer to count up.
 
     /* Configure TIM1 Input capture */
-    TIM_ICInitStructure.ICPolarity = TIM_ICPOLARITY_RISING;         //Set to trigger on rising edge
+    //TIM_ICInitStructure.ICPolarity = TIM_ICPOLARITY_RISING;         //Set to trigger on rising edge
+    TIM_ICInitStructure.ICPolarity = TIM_ICPOLARITY_BOTHEDGE;         //Set to trigger on rising edge
     TIM_ICInitStructure.ICSelection = TIM_ICSELECTION_DIRECTTI;
     TIM_ICInitStructure.ICPrescaler = TIM_ICPSC_DIV1;
     TIM_ICInitStructure.ICFilter = 0;
@@ -138,8 +164,56 @@ void s4527438_hal_irremote_init(void) {
 }
 
 void s4527438_hal_irremote_recv(void) {
-    /* Check is current tick  */
-    if(  )
+    Wave_Recording_TypeStruct *wave_handle = &wave_recording_handle;
+    uint32_t period_whole = 0;
+    uint32_t period_positive = 0;
+    uint32_t positive_period_percent_num = 0;
+    unsigned char previous_is_ever_receive_event_leading;
+
+    if( current_edge_detect_state != DETECT_RISING_EDGE ) {
+        return;
+    }
+
+    if( (wave_handle->current_tick_rising_detected - wave_handle->last_tick_rising_detected) <= 0 ) {
+        return;
+    }
+
+    if( (wave_handle->current_tick_falling_detected - wave_handle->last_tick_rising_detected) <= 0 ) {
+        return;
+    }
+
+    previous_is_ever_receive_event_leading = wave_handle->is_ever_receive_event_leading;
+
+    /* Always check the leading event */
+    {
+        period_whole = wave_handle->current_tick_rising_detected - wave_handle->last_tick_rising_detected;
+        period_positive = wave_handle->current_tick_falling_detected - wave_handle->last_tick_rising_detected;
+        
+        positive_period_percent_num = ( period_positive * 100 ) / period_whole;
+        
+        if( ( positive_period_percent_num - WAVE_PATTERN_LEADING_EVENT_POSITIVE_PERCENT_NUM ) < WAVE_PATTERN_COMPARE_NUM ) {
+            if( previous_is_ever_receive_event_leading ) {
+                WAVE_RECORDING_RESET(&wave_recording_handle);
+            }
+            wave_handle->is_ever_receive_event_leading = 1;
+        } else if( wave_handle->is_ever_receive_event_leading == 1 ) {
+            if( ( positive_period_percent_num - WAVE_PATTERN_BIT_ONE_EVENT_POSITIVE_PERCENT_NUM ) < WAVE_PATTERN_COMPARE_NUM ) {
+                WAVE_RECORDING_SET_BIT_ONE(&wave_recording_handle);
+            } else if( ( positive_period_percent_num - WAVE_PATTERN_BIT_ZEROE_EVENT_POSITIVE_PERCENT_NUM ) < WAVE_PATTERN_COMPARE_NUM ) {
+                WAVE_RECORDING_SET_BIT_ZEROE(&wave_recording_handle);
+            }
+            if( wave_handle->received_bit_index >= 15 ) {
+                uint8_t i = 0;
+                debug_printf("Received: ");
+                for (i = 0; i < 4; i++) {
+                    debug_printf("%x ", wave_handle->received_byte_buffer[i]);
+                }
+                WAVE_RECORDING_RESET(&wave_recording_handle);
+                wave_handle->is_ever_receive_event_leading = 0;
+                debug_printf("\r\n");
+            }
+        }
+    }
 }
 
 /**

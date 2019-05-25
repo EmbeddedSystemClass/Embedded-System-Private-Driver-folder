@@ -36,11 +36,22 @@ int s4527438_hal_radio_getrxstatus(void);
 void s4527438_hal_radio_getpacket(unsigned
 char *rxpacket);
 
+int s4527438_hal_radio_get_current_fsm_state(void);
+
 
 #define S4527438_RADIO_IDLE_STATE       0
 #define S4527438_RADIO_RX_STATE         1
 #define S4527438_RADIO_TX_STATE         2
 #define S4527438_RADIO_WAITING_STATE    3
 #define S4527438_RADIO_STATE_MAX_VALUE  S4527438_RADIO_WAITING_STATE
+
+#define RADIO_HAL_TOTAL_PACKET_WIDTH    32
+#define RADIO_HAL_HEADER_WIDTH          10
+#define RADIO_HAL_TX_RX_ADDR_WIDTH          4
+#define RADIO_HAL_TX_RX_ADDR_STRING_WIDTH   8
+
+#define RX_STATUS_NO_PACKET_RECEIVED        0
+#define RX_STATUS_PACKET_RECEIVED           1
+#define RX_STATUS_PACKET_COPIED_BY_USER     2
 
 #endif /* S4527438_HAL_RADIO_H_ */
