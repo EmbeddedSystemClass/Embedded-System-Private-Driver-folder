@@ -73,6 +73,9 @@ struct Message {    /* Message consists of sequence number and payload string */
 #define mainRADIO_TASK_PRIORITY               ( tskIDLE_PRIORITY + 4 )
 #define mainRADIO_TASK_STACK_SIZE     ( configMINIMAL_STACK_SIZE * 16 )
 
+#define mainORBReceiver_TASK_PRIORITY               ( tskIDLE_PRIORITY + 2 )
+#define mainORBReceiver_TASK_STACK_SIZE     ( configMINIMAL_STACK_SIZE * 16 )
+
 #define QUEUE_BLOCK_TIME_AS_FSM_PERIOD_TICK 100
 
 #define SELF_SOURCE_ADDR_STRING                        "45274389"
@@ -108,20 +111,25 @@ struct Message {    /* Message consists of sequence number and payload string */
 
 #define RADIO_RX_RETRY_COUNT                200
 #define RADIO_RX_RETRY_COUNT_DELAY          20
+
+#define QUEUE_LENGTH                        50
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
 static TaskHandle_t xTaskRadioOsHandle;
-QueueHandle_t s4527438QueueSorterPacketSend;
+static TaskHandle_t xTaskORBReceiverOsHandle;
+static QueueHandle_t s4527438QueueSorterPacketSend;
+static SemaphoreHandle_t s4527438Semaphore_ORB_RX_Event = NULL;
 static QueueSetHandle_t xQueueSet;
 
 static Sorter_handler_Type sorter_handler;
 static ORB_handler_Type orb_handler;
 /* Private function prototypes -----------------------------------------------*/
 static void RadioTask( void );
+static void ORBReceiverTask( void );
 
 void s4527438_os_radio_init(void) {
 
-    s4527438QueueSorterPacketSend = xQueueCreate(10, sizeof(struct Message));       /* Create queue of length 10 Message items */
+    s4527438QueueSorterPacketSend = xQueueCreate(QUEUE_LENGTH, sizeof(struct Message));       /* Create queue of length 10 Message items */
 
     /* Init sorter */
     sorter_handler.status = NOT_REGISTERED;
@@ -185,10 +193,15 @@ void s4527438_os_radio_init(void) {
 
     /* Init ORB */ 
 
-    /* Create QueueSet */
-    xQueueSet = xQueueCreateSet(10 * 2 );    //Size of Queueset = Size of Queue (10) * 2 
+    s4527438Semaphore_ORB_RX_Event = xSemaphoreCreateBinary();
 
+    /* Create QueueSet */
+    xQueueSet = xQueueCreateSet(QUEUE_LENGTH * 2 );    //Size of Queueset = Size of Queue (10) * 2 
+
+    xQueueAddToSet(s4527438Semaphore_ORB_RX_Event, xQueueSet);
     xQueueAddToSet(s4527438QueueSorterPacketSend, xQueueSet);
+
+    xTaskCreate( (void *) &ORBReceiverTask, (const signed char *) "ORBReceiverTask", mainORBReceiver_TASK_STACK_SIZE, NULL, mainORBReceiver_TASK_PRIORITY, &xTaskORBReceiverOsHandle );
 
     xTaskCreate( (void *) &RadioTask, (const signed char *) "RadioTask", mainRADIO_TASK_STACK_SIZE, NULL, mainRADIO_TASK_PRIORITY, &xTaskRadioOsHandle );
 }
@@ -253,6 +266,29 @@ void s4527438_os_radio_send_vacuum_packet(Message_Vacuum_Action_Enum vacuum_acti
     }
 }
 
+static void radio_orb_send_rx_event(void) {
+#if 0
+    struct Message SendMessage;
+
+    if( sorter_handler.status == NOT_REGISTERED ) {
+        return;
+    }
+
+    SendMessage.MessageType = MESSAGE_RX_ORB_ACTION;
+
+    if (s4527438QueueSorterPacketSend != NULL) { /* Check if queue exists */
+        xQueueSend(s4527438QueueSorterPacketSend, ( void * ) &SendMessage, ( portTickType ) 0 );
+    }
+#endif
+    if( sorter_handler.status == NOT_REGISTERED ) {
+        return;
+    }
+
+    if (s4527438Semaphore_ORB_RX_Event != NULL) { /* Check if semaphore exists */
+        xSemaphoreGive(s4527438Semaphore_ORB_RX_Event);
+    }
+}
+
 static void configure_sorter_tx_setting(void) {
 	s4527438_hal_radio_setchan(sorter_handler.channel);
 	s4527438_hal_radio_settxaddress(sorter_handler.tx_addr);
@@ -291,13 +327,61 @@ static void RadioTask( void ) {
         /* Which set member was selected?  Receives/takes can use a block time
         of zero as they are guaranteed to pass because xQueueSelectFromSet()
         would not have returned the handle unless something was available. */
-        if (xActivatedMember == s4527438QueueSorterPacketSend) {
+        if (xActivatedMember == s4527438Semaphore_ORB_RX_Event) {  
+
+            /* We were able to obtain the semaphore and can now access the shared resource. */
+            xSemaphoreTake(s4527438Semaphore_ORB_RX_Event, 0 );
+
+                    while(1){
+                        s4527438_hal_radio_fsmprocessing();
+                        if(s4527438_hal_radio_get_current_fsm_state() == S4527438_RADIO_IDLE_STATE ){
+                            break;
+                        }
+                        vTaskDelay(RADIO_RX_RETRY_COUNT_DELAY);
+                    }
+                    configure_orb_rx_setting();
+                    s4527438_hal_radio_setfsmrx();
+
+                    while(1){
+                        s4527438_hal_radio_fsmprocessing();
+                        if(s4527438_hal_radio_get_current_fsm_state() == S4527438_RADIO_WAITING_STATE ){
+                            break;
+                        }
+                        vTaskDelay(RADIO_RX_RETRY_COUNT_DELAY);
+                    }
+                    while(1){
+                        s4527438_hal_radio_fsmprocessing();
+                        if(s4527438_hal_radio_get_current_fsm_state() == S4527438_RADIO_IDLE_STATE ){
+                            break;
+                        }
+                        vTaskDelay(RADIO_RX_RETRY_COUNT_DELAY);
+                    }
+                    {
+                        uint8_t rx_buffer[RADIO_HAL_TOTAL_PACKET_WIDTH];
+                        memset(rx_buffer,0x00,sizeof(rx_buffer));
+                        for(i = 0;i < RADIO_RX_RETRY_COUNT;i++){
+                            s4527438_hal_radio_fsmprocessing();
+	                        if( s4527438_hal_radio_getrxstatus() == RX_STATUS_PACKET_RECEIVED ) {
+                                s4527438_hal_radio_getpacket(rx_buffer);
+                                break;
+                            }
+                            vTaskDelay(RADIO_RX_RETRY_COUNT_DELAY);
+                        }
+                    }
+        } else if (xActivatedMember == s4527438QueueSorterPacketSend) {
 
             /* Receive item */
             xQueueReceive( s4527438QueueSorterPacketSend, &RecvMessage, 0 );
 
             switch(RecvMessage.MessageType) {
                 case MESSAGE_TX_XYZ_TYPE:
+                    while(1){
+                        s4527438_hal_radio_fsmprocessing();
+                        if(s4527438_hal_radio_get_current_fsm_state() == S4527438_RADIO_IDLE_STATE ){
+                            break;
+                        }
+                        vTaskDelay(RADIO_RX_RETRY_COUNT_DELAY);
+                    }
                     configure_sorter_tx_setting();
                     snprintf(tx_string,sizeof(tx_string),"XYZ%03d%03d%02d",RecvMessage.x_coordinate,RecvMessage.y_coordinate,RecvMessage.z_coordinate);
                     s4527438_hal_radio_sendpacket(0,sorter_handler.tx_addr,tx_string);
@@ -350,6 +434,13 @@ static void RadioTask( void ) {
                     }
                     break;
                 case MESSAGE_TX_JOIN_TYPE:
+                    while(1){
+                        s4527438_hal_radio_fsmprocessing();
+                        if(s4527438_hal_radio_get_current_fsm_state() == S4527438_RADIO_IDLE_STATE ){
+                            break;
+                        }
+                        vTaskDelay(RADIO_RX_RETRY_COUNT_DELAY);
+                    }
                     configure_sorter_tx_setting();
                     s4527438_hal_radio_sendpacket(0,sorter_handler.tx_addr,"JOIN");
 
@@ -403,6 +494,13 @@ static void RadioTask( void ) {
                     }
                     break;
                 case MESSAGE_TX_VACUUM_ACTION:
+                    while(1){
+                        s4527438_hal_radio_fsmprocessing();
+                        if(s4527438_hal_radio_get_current_fsm_state() == S4527438_RADIO_IDLE_STATE ){
+                            break;
+                        }
+                        vTaskDelay(RADIO_RX_RETRY_COUNT_DELAY);
+                    }
                     configure_sorter_tx_setting();
                     if(RecvMessage.vacuum_action == VACUUM_ON) {
                         s4527438_hal_radio_sendpacket(0,sorter_handler.tx_addr,"VON");
@@ -494,37 +592,6 @@ static void RadioTask( void ) {
                         }
                     }
                     break;
-                case MESSAGE_RX_ORB_ACTION:
-                    configure_orb_rx_setting();
-                    s4527438_hal_radio_setfsmrx();
-
-                    while(1){
-                        s4527438_hal_radio_fsmprocessing();
-                        if(s4527438_hal_radio_get_current_fsm_state() == S4527438_RADIO_WAITING_STATE ){
-                            break;
-                        }
-                        vTaskDelay(RADIO_RX_RETRY_COUNT_DELAY);
-                    }
-                    while(1){
-                        s4527438_hal_radio_fsmprocessing();
-                        if(s4527438_hal_radio_get_current_fsm_state() == S4527438_RADIO_IDLE_STATE ){
-                            break;
-                        }
-                        vTaskDelay(RADIO_RX_RETRY_COUNT_DELAY);
-                    }
-                    {
-                        uint8_t rx_buffer[RADIO_HAL_TOTAL_PACKET_WIDTH];
-                        memset(rx_buffer,0x00,sizeof(rx_buffer));
-                        for(i = 0;i < RADIO_RX_RETRY_COUNT;i++){
-                            s4527438_hal_radio_fsmprocessing();
-	                        if( s4527438_hal_radio_getrxstatus() == RX_STATUS_PACKET_RECEIVED ) {
-                                s4527438_hal_radio_getpacket(rx_buffer);
-                            }
-                            vTaskDelay(RADIO_RX_RETRY_COUNT_DELAY);
-                        }
-                    }
-
-                    break;
             }
 
 #if 0
@@ -547,3 +614,9 @@ static void RadioTask( void ) {
 
 
 
+static void ORBReceiverTask( void ) {
+    for(;;){
+        radio_orb_send_rx_event();
+        vTaskDelay(100);
+    }
+}
