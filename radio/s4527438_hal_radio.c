@@ -194,7 +194,7 @@ char *addr) {
     nrf24l01plus_rb(NRF24L01P_RX_ADDR_P0, addr, RADIO_HAL_TX_RX_ADDR_WIDTH);
 }
 
-static uint8_t hex_2_byte(unsigned char *input_2_char) {
+static uint8_t convert_2_char_to_1_hex_byte(unsigned char *input_2_char) {
     uint8_t result = 0;
     unsigned char target_char = '0';
     unsigned char i = 0;
@@ -239,7 +239,7 @@ static void string_to_hex(char *input_string,unsigned char input_length,uint8_t 
         if( j >= output_length ) {
             break;
         }
-        output_buffer[j] = hex_2_byte(input_string);
+        output_buffer[j] = convert_2_char_to_1_hex_byte(input_string);
         input_string -= 2;
         j++;
     }
@@ -260,7 +260,7 @@ static void string_to_hex(char *input_string,unsigned char input_length,uint8_t 
         if( j >= output_length ) {
             break;
         }
-        output_buffer[j] = hex_2_byte(input_string);
+        output_buffer[j] = convert_2_char_to_1_hex_byte(input_string);
         input_string += 2;
         j++;
     }
