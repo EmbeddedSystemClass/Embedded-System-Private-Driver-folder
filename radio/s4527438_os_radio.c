@@ -69,6 +69,18 @@ struct Message {    /* Message consists of sequence number and payload string */
     uint32_t    y_coordinate;
     uint32_t    z_coordinate;
 };
+
+typedef struct {
+        uint8_t ID;
+        uint16_t x_coordinate;
+        uint16_t y_coordinate;
+
+        uint16_t width;
+        uint16_t height;
+
+        uint16_t color;
+} RAE_Type;
+
 /* Private define ------------------------------------------------------------*/
 #define mainRADIO_TASK_PRIORITY               ( tskIDLE_PRIORITY + 4 )
 #define mainRADIO_TASK_STACK_SIZE     ( configMINIMAL_STACK_SIZE * 16 )
@@ -304,7 +316,92 @@ static void configure_sorter_rx_setting(void) {
 static void configure_orb_rx_setting(void) {
 	s4527438_hal_radio_setchan(orb_handler.channel);
 	s4527438_hal_radio_settxaddress(orb_handler.tx_addr);
-	s4527438_hal_radio_setrxaddress(orb_handler.rx_addr);
+    /* NOTE : tx and rx are the same as tx for broadcast address */
+	s4527438_hal_radio_setrxaddress(orb_handler.tx_addr);
+}
+
+#define HIGH_4_BIT  0xF0
+#define LOW_4_BIT   0x0F
+
+static uint8_t swap_4_bit(uint8_t *input_byte){
+    uint8_t result_1_byte = 0;
+
+    result_1_byte = ((*input_byte) & LOW_4_BIT);
+    result_1_byte = (result_1_byte << 4);
+    result_1_byte |= (((*input_byte) & HIGH_4_BIT) >> 4);
+    return result_1_byte;
+}
+
+static void radio_RAE_parser(uint8_t *rx_buffer,RAE_Type *parsed_RAE) {
+    uint8_t *payload = &(rx_buffer[RADIO_HAL_HEADER_WIDTH]);
+    uint8_t *current_index = 0 , result_1_byte;
+    uint16_t swap_1_byte = 0;
+
+    current_index = payload;
+
+    // 1 byte : Marker ID
+    result_1_byte = swap_4_bit(current_index);
+    parsed_RAE->ID = result_1_byte;
+    current_index++;
+
+    // 2 byte : x coordinate
+    result_1_byte = swap_4_bit(&(current_index[0]));
+    swap_1_byte = 0;
+    swap_1_byte = (uint16_t)result_1_byte;
+    swap_1_byte |= (swap_1_byte << 8); 
+
+    result_1_byte = swap_4_bit(&(current_index[1]));
+    swap_1_byte |= (uint16_t)result_1_byte;
+
+    parsed_RAE->x_coordinate = swap_1_byte;
+    current_index += 2;
+
+    // 2 byte : y coordinate
+    result_1_byte = swap_4_bit(&(current_index[0]));
+    swap_1_byte = 0;
+    swap_1_byte = (uint16_t)result_1_byte;
+    swap_1_byte |= (swap_1_byte << 8); 
+
+    result_1_byte = swap_4_bit(&(current_index[1]));
+    swap_1_byte |= (uint16_t)result_1_byte;
+
+    parsed_RAE->y_coordinate = swap_1_byte;
+    current_index += 2;
+
+    // 2 byte : width
+    result_1_byte = swap_4_bit(&(current_index[0]));
+    swap_1_byte = 0;
+    swap_1_byte = (uint16_t)result_1_byte;
+    swap_1_byte |= (swap_1_byte << 8); 
+
+    result_1_byte = swap_4_bit(&(current_index[1]));
+    swap_1_byte |= (uint16_t)result_1_byte;
+
+    parsed_RAE->width = swap_1_byte;
+    current_index += 2;
+
+    // 2 byte : height
+    result_1_byte = swap_4_bit(&(current_index[0]));
+    swap_1_byte = 0;
+    swap_1_byte = (uint16_t)result_1_byte;
+    swap_1_byte |= (swap_1_byte << 8); 
+
+    result_1_byte = swap_4_bit(&(current_index[1]));
+    swap_1_byte |= (uint16_t)result_1_byte;
+
+    parsed_RAE->height = swap_1_byte;
+    current_index += 2;
+
+    // 2 byte : color
+    result_1_byte = swap_4_bit(&(current_index[0]));
+    swap_1_byte = 0;
+    swap_1_byte = (uint16_t)result_1_byte;
+    swap_1_byte |= (swap_1_byte << 8); 
+
+    result_1_byte = swap_4_bit(&(current_index[1]));
+    swap_1_byte |= (uint16_t)result_1_byte;
+
+    parsed_RAE->color = swap_1_byte;
 }
 
 static void RadioTask( void ) {
@@ -328,6 +425,7 @@ static void RadioTask( void ) {
         of zero as they are guaranteed to pass because xQueueSelectFromSet()
         would not have returned the handle unless something was available. */
         if (xActivatedMember == s4527438Semaphore_ORB_RX_Event) {  
+            RAE_Type parsed_RAE;
 
             /* We were able to obtain the semaphore and can now access the shared resource. */
             xSemaphoreTake(s4527438Semaphore_ORB_RX_Event, 0 );
@@ -363,6 +461,14 @@ static void RadioTask( void ) {
                             s4527438_hal_radio_fsmprocessing();
 	                        if( s4527438_hal_radio_getrxstatus() == RX_STATUS_PACKET_RECEIVED ) {
                                 s4527438_hal_radio_getpacket(rx_buffer);
+                                radio_RAE_parser(rx_buffer,&parsed_RAE);
+                                debug_printf("RAE ID : %d , X : %d , Y : %d , width : %d , height : %d , color : %d \r\n",parsed_RAE.ID,
+                                                                                                                          parsed_RAE.x_coordinate,
+                                                                                                                          parsed_RAE.y_coordinate,
+                                                                                                                          parsed_RAE.width,
+                                                                                                                          parsed_RAE.height,
+                                                                                                                          parsed_RAE.color
+                                                                                                                          );
                                 break;
                             }
                             vTaskDelay(RADIO_RX_RETRY_COUNT_DELAY);

@@ -475,12 +475,12 @@ static void WAITING_STATE_state_handle_fsm_process(void) {
 
         debug_printf("Received: ");
         for (i = 0; i < NO_ENCODE_WIDTH; i++) {
-            debug_printf("%x ", rxBuffer[i]);
+            debug_printf("%02x ", rxBuffer[i]);
         }
         memset(decoded_buffer,0x00,sizeof(decoded_buffer));
         for (j = 0; i < RADIO_HAL_TOTAL_PACKET_WIDTH; i+=2,j++) {
             s4527438_lib_hamming_byte_decoder(&(rxBuffer[i]),&(decoded_buffer[j]));
-            debug_printf("%c", decoded_buffer[j]);
+            debug_printf("%02x(%c)", decoded_buffer[j],decoded_buffer[j]);
         }
         memcpy(&(rxBuffer[NO_ENCODE_WIDTH]),decoded_buffer,ENCODE_WIDTH);
         // After decoded
