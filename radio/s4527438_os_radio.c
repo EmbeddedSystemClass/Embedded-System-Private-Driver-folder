@@ -71,14 +71,14 @@ struct Message {    /* Message consists of sequence number and payload string */
 };
 
 typedef struct {
-        uint8_t ID;
+        uint16_t     ID;
         uint16_t x_coordinate;
         uint16_t y_coordinate;
 
         uint16_t width;
         uint16_t height;
 
-        uint16_t color;
+        uint8_t color;
 } RAE_Type;
 
 /* Private define ------------------------------------------------------------*/
@@ -339,16 +339,23 @@ static void radio_RAE_parser(uint8_t *rx_buffer,RAE_Type *parsed_RAE) {
 
     current_index = payload;
 
-    // 1 byte : Marker ID
-    result_1_byte = swap_4_bit(current_index);
-    parsed_RAE->ID = result_1_byte;
-    current_index++;
+    // 2 byte : Marker ID
+    result_1_byte = swap_4_bit(&(current_index[0]));
+    swap_1_byte = 0;
+    swap_1_byte = (uint16_t)result_1_byte;
+    swap_1_byte = (swap_1_byte << 8); 
+
+    result_1_byte = swap_4_bit(&(current_index[1]));
+    swap_1_byte |= (uint16_t)result_1_byte;
+
+    parsed_RAE->ID = swap_1_byte;
+    current_index += 2;
 
     // 2 byte : x coordinate
     result_1_byte = swap_4_bit(&(current_index[0]));
     swap_1_byte = 0;
     swap_1_byte = (uint16_t)result_1_byte;
-    swap_1_byte |= (swap_1_byte << 8); 
+    swap_1_byte = (swap_1_byte << 8); 
 
     result_1_byte = swap_4_bit(&(current_index[1]));
     swap_1_byte |= (uint16_t)result_1_byte;
@@ -360,7 +367,7 @@ static void radio_RAE_parser(uint8_t *rx_buffer,RAE_Type *parsed_RAE) {
     result_1_byte = swap_4_bit(&(current_index[0]));
     swap_1_byte = 0;
     swap_1_byte = (uint16_t)result_1_byte;
-    swap_1_byte |= (swap_1_byte << 8); 
+    swap_1_byte = (swap_1_byte << 8); 
 
     result_1_byte = swap_4_bit(&(current_index[1]));
     swap_1_byte |= (uint16_t)result_1_byte;
@@ -372,7 +379,7 @@ static void radio_RAE_parser(uint8_t *rx_buffer,RAE_Type *parsed_RAE) {
     result_1_byte = swap_4_bit(&(current_index[0]));
     swap_1_byte = 0;
     swap_1_byte = (uint16_t)result_1_byte;
-    swap_1_byte |= (swap_1_byte << 8); 
+    swap_1_byte = (swap_1_byte << 8); 
 
     result_1_byte = swap_4_bit(&(current_index[1]));
     swap_1_byte |= (uint16_t)result_1_byte;
@@ -384,7 +391,7 @@ static void radio_RAE_parser(uint8_t *rx_buffer,RAE_Type *parsed_RAE) {
     result_1_byte = swap_4_bit(&(current_index[0]));
     swap_1_byte = 0;
     swap_1_byte = (uint16_t)result_1_byte;
-    swap_1_byte |= (swap_1_byte << 8); 
+    swap_1_byte = (swap_1_byte << 8); 
 
     result_1_byte = swap_4_bit(&(current_index[1]));
     swap_1_byte |= (uint16_t)result_1_byte;
@@ -392,15 +399,8 @@ static void radio_RAE_parser(uint8_t *rx_buffer,RAE_Type *parsed_RAE) {
     parsed_RAE->height = swap_1_byte;
     current_index += 2;
 
-    // 2 byte : color
-    result_1_byte = swap_4_bit(&(current_index[0]));
-    swap_1_byte = 0;
-    swap_1_byte = (uint16_t)result_1_byte;
-    swap_1_byte |= (swap_1_byte << 8); 
-
-    result_1_byte = swap_4_bit(&(current_index[1]));
-    swap_1_byte |= (uint16_t)result_1_byte;
-
+    // 1 byte : color
+    result_1_byte = swap_4_bit(current_index);
     parsed_RAE->color = swap_1_byte;
 }
 
