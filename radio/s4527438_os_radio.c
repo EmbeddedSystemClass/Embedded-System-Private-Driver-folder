@@ -51,8 +51,16 @@ typedef struct{
     uint32_t    y_coordinate;
     uint32_t    z_coordinate;
     
-    uint8_t     addr[RADIO_HAL_TX_RX_ADDR_STRING_WIDTH];
+    uint8_t     channel;
+    uint8_t     tx_addr[RADIO_HAL_TX_RX_ADDR_STRING_WIDTH + 1];
+    uint8_t     rx_addr[RADIO_HAL_TX_RX_ADDR_STRING_WIDTH + 1];
 }Sorter_handler_Type;
+
+typedef struct{
+    uint8_t     channel;
+    uint8_t     tx_addr[RADIO_HAL_TX_RX_ADDR_STRING_WIDTH + 1];
+    uint8_t     rx_addr[RADIO_HAL_TX_RX_ADDR_STRING_WIDTH + 1];
+}ORB_handler_Type;
 
 struct Message {    /* Message consists of sequence number and payload string */
     Message_Type_Enum   MessageType;
@@ -67,11 +75,10 @@ struct Message {    /* Message consists of sequence number and payload string */
 
 #define QUEUE_BLOCK_TIME_AS_FSM_PERIOD_TICK 100
 
-#define COM_BASE_TX_SOURCE_ADDR_STRING                        "45274389"
+#define SELF_SOURCE_ADDR_STRING                        "45274389"
+
 #define COM_BASE_TX_DESTINATION_ADDR_STRING                   "11223345"
 #define COM_BASE_TX_CHANNEL                                   45	
-
-#define SORTER_TX_SOURCE_ADDR_STRING                            "45274389"
 
 #define SORTER_1_TX_DESTINATION_ADDR_STRING                   "80000055"
 #define SORTER_1_TX_CHANNEL                                   55
@@ -84,8 +91,6 @@ struct Message {    /* Message consists of sequence number and payload string */
 
 #define SORTER_4_TX_DESTINATION_ADDR_STRING                   "80000059"
 #define SORTER_4_TX_CHANNEL                                   59
-
-#define ORB_RX_SOURCE_ADDR_STRING                        "45274389"
 
 #define ORB_1_RX_DESTINATION_ADDR_STRING                   "90000051"
 #define ORB_1_RX_CHANNEL                                   51
@@ -110,12 +115,75 @@ QueueHandle_t s4527438QueueSorterPacketSend;
 static QueueSetHandle_t xQueueSet;
 
 static Sorter_handler_Type sorter_handler;
+static ORB_handler_Type orb_handler;
 /* Private function prototypes -----------------------------------------------*/
 static void RadioTask( void );
 
 void s4527438_os_radio_init(void) {
 
     s4527438QueueSorterPacketSend = xQueueCreate(10, sizeof(struct Message));       /* Create queue of length 10 Message items */
+
+    /* Init sorter */
+    sorter_handler.status = NOT_REGISTERED;
+#ifdef COM_BASE_SETTING
+    memcpy(sorter_handler.tx_addr,COM_BASE_TX_DESTINATION_ADDR_STRING,sizeof(sorter_handler.tx_addr));
+    memcpy(sorter_handler.rx_addr,SELF_SOURCE_ADDR_STRING,sizeof(sorter_handler.rx_addr));
+    sorter_handler.channel = COM_BASE_TX_CHANNEL;
+
+    memcpy(orb_handler.tx_addr,COM_BASE_TX_DESTINATION_ADDR_STRING,sizeof(sorter_handler.tx_addr));
+    memcpy(orb_handler.rx_addr,SELF_SOURCE_ADDR_STRING,sizeof(orb_handler.rx_addr));
+    orb_handler.channel = COM_BASE_TX_CHANNEL;
+#endif
+
+#ifdef SORTER1_SETTING
+    memcpy(sorter_handler.tx_addr,SORTER_1_TX_DESTINATION_ADDR_STRING,sizeof(sorter_handler.tx_addr));
+    memcpy(sorter_handler.rx_addr,SELF_SOURCE_ADDR_STRING,sizeof(sorter_handler.rx_addr));
+    sorter_handler.channel = SORTER_1_TX_CHANNEL;
+#endif
+
+#ifdef SORTER2_SETTING
+    memcpy(sorter_handler.tx_addr,SORTER_2_TX_DESTINATION_ADDR_STRING,sizeof(sorter_handler.tx_addr));
+    memcpy(sorter_handler.rx_addr,SELF_SOURCE_ADDR_STRING,sizeof(sorter_handler.rx_addr));
+    sorter_handler.channel = SORTER_2_TX_CHANNEL;
+#endif
+
+#ifdef SORTER3_SETTING
+    memcpy(sorter_handler.tx_addr,SORTER_3_TX_DESTINATION_ADDR_STRING,sizeof(sorter_handler.tx_addr));
+    memcpy(sorter_handler.rx_addr,SELF_SOURCE_ADDR_STRING,sizeof(sorter_handler.rx_addr));
+    sorter_handler.channel = SORTER_3_TX_CHANNEL;
+#endif
+
+#ifdef SORTER4_SETTING
+    memcpy(sorter_handler.tx_addr,SORTER_4_TX_DESTINATION_ADDR_STRING,sizeof(sorter_handler.tx_addr));
+    memcpy(sorter_handler.rx_addr,SELF_SOURCE_ADDR_STRING,sizeof(sorter_handler.rx_addr));
+    sorter_handler.channel = SORTER_4_TX_CHANNEL;
+#endif
+
+#ifdef ORB1_SETTING
+    memcpy(orb_handler.tx_addr,ORB_1_RX_DESTINATION_ADDR_STRING,sizeof(sorter_handler.tx_addr));
+    memcpy(orb_handler.rx_addr,SELF_SOURCE_ADDR_STRING,sizeof(orb_handler.rx_addr));
+    orb_handler.channel = ORB_1_RX_CHANNEL;
+#endif
+
+#ifdef ORB2_SETTING
+    memcpy(orb_handler.tx_addr,ORB_2_RX_DESTINATION_ADDR_STRING,sizeof(sorter_handler.tx_addr));
+    memcpy(orb_handler.rx_addr,SELF_SOURCE_ADDR_STRING,sizeof(orb_handler.rx_addr));
+    orb_handler.channel = ORB_2_RX_CHANNEL;
+#endif
+
+#ifdef ORB3_SETTING
+    memcpy(orb_handler.tx_addr,ORB_3_RX_DESTINATION_ADDR_STRING,sizeof(sorter_handler.tx_addr));
+    memcpy(orb_handler.rx_addr,SELF_SOURCE_ADDR_STRING,sizeof(orb_handler.rx_addr));
+    orb_handler.channel = ORB_3_RX_CHANNEL;
+#endif
+
+#ifdef ORB4_SETTING
+    memcpy(orb_handler.tx_addr,ORB_4_RX_DESTINATION_ADDR_STRING,sizeof(sorter_handler.tx_addr));
+    memcpy(orb_handler.rx_addr,SELF_SOURCE_ADDR_STRING,sizeof(orb_handler.rx_addr));
+    orb_handler.channel = ORB_4_RX_CHANNEL;
+#endif
+
+    /* Init ORB */ 
 
     /* Create QueueSet */
     xQueueSet = xQueueCreateSet(10 * 2 );    //Size of Queueset = Size of Queue (10) * 2 
@@ -186,21 +254,21 @@ void s4527438_os_radio_send_vacuum_packet(Message_Vacuum_Action_Enum vacuum_acti
 }
 
 static void configure_sorter_tx_setting(void) {
-	s4527438_hal_radio_setchan(COM_BASE_TX_CHANNEL);
-	s4527438_hal_radio_settxaddress(COM_BASE_TX_DESTINATION_ADDR_STRING);
-	s4527438_hal_radio_setrxaddress(COM_BASE_TX_SOURCE_ADDR_STRING);
+	s4527438_hal_radio_setchan(sorter_handler.channel);
+	s4527438_hal_radio_settxaddress(sorter_handler.tx_addr);
+	s4527438_hal_radio_setrxaddress(sorter_handler.rx_addr);
 }
 
 static void configure_sorter_rx_setting(void) {
-	s4527438_hal_radio_setchan(COM_BASE_TX_CHANNEL);
-	s4527438_hal_radio_settxaddress(COM_BASE_TX_DESTINATION_ADDR_STRING);
-	s4527438_hal_radio_setrxaddress(COM_BASE_TX_SOURCE_ADDR_STRING);
+	s4527438_hal_radio_setchan(sorter_handler.channel);
+	s4527438_hal_radio_settxaddress(sorter_handler.tx_addr);
+	s4527438_hal_radio_setrxaddress(sorter_handler.rx_addr);
 }
 
 static void configure_orb_rx_setting(void) {
-	s4527438_hal_radio_setchan(ORB_1_RX_CHANNEL);
-	s4527438_hal_radio_settxaddress(ORB_1_RX_DESTINATION_ADDR_STRING);
-	s4527438_hal_radio_setrxaddress(ORB_RX_SOURCE_ADDR_STRING);
+	s4527438_hal_radio_setchan(orb_handler.channel);
+	s4527438_hal_radio_settxaddress(orb_handler.tx_addr);
+	s4527438_hal_radio_setrxaddress(orb_handler.rx_addr);
 }
 
 static void RadioTask( void ) {
@@ -215,8 +283,6 @@ static void RadioTask( void ) {
     // Harware init
     s4527438_hal_radio_init();
 
-    sorter_handler.status = NOT_REGISTERED;
-    memcpy(sorter_handler.addr,COM_BASE_TX_DESTINATION_ADDR_STRING,sizeof(sorter_handler.addr));
 
     for (;;) {
 
@@ -234,7 +300,7 @@ static void RadioTask( void ) {
                 case MESSAGE_TX_XYZ_TYPE:
                     configure_sorter_tx_setting();
                     snprintf(tx_string,sizeof(tx_string),"XYZ%03d%03d%02d",RecvMessage.x_coordinate,RecvMessage.y_coordinate,RecvMessage.z_coordinate);
-                    s4527438_hal_radio_sendpacket(0,sorter_handler.addr,tx_string);
+                    s4527438_hal_radio_sendpacket(0,sorter_handler.tx_addr,tx_string);
 
                     while(1){
                         s4527438_hal_radio_fsmprocessing();
@@ -271,7 +337,7 @@ static void RadioTask( void ) {
                     break;
                 case MESSAGE_TX_JOIN_TYPE:
                     configure_sorter_tx_setting();
-                    s4527438_hal_radio_sendpacket(0,sorter_handler.addr,"JOIN");
+                    s4527438_hal_radio_sendpacket(0,sorter_handler.tx_addr,"JOIN");
 
                     while(1){
                         s4527438_hal_radio_fsmprocessing();
@@ -311,9 +377,9 @@ static void RadioTask( void ) {
                 case MESSAGE_TX_VACUUM_ACTION:
                     configure_sorter_tx_setting();
                     if(RecvMessage.vacuum_action == VACUUM_ON) {
-                        s4527438_hal_radio_sendpacket(0,sorter_handler.addr,"VON");
+                        s4527438_hal_radio_sendpacket(0,sorter_handler.tx_addr,"VON");
                     } else if( RecvMessage.vacuum_action == VACUUM_OFF ) {
-                        s4527438_hal_radio_sendpacket(0,sorter_handler.addr,"VOFF");
+                        s4527438_hal_radio_sendpacket(0,sorter_handler.tx_addr,"VOFF");
                     }
                     while(1){
                         s4527438_hal_radio_fsmprocessing();
@@ -349,7 +415,7 @@ static void RadioTask( void ) {
                     break;
                 case MESSAGE_TX_KEEPALIVE_ACTION:
                     configure_sorter_tx_setting();
-                    s4527438_hal_radio_sendpacket(0,sorter_handler.addr,"JOIN");
+                    s4527438_hal_radio_sendpacket(0,sorter_handler.tx_addr,"JOIN");
                     while(1){
                         s4527438_hal_radio_fsmprocessing();
                         if(s4527438_hal_radio_get_current_fsm_state() == S4527438_RADIO_IDLE_STATE ){
