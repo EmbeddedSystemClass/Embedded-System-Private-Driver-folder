@@ -82,7 +82,7 @@ void s4527438_cli_radio_init(void) {
 }
 
 static BaseType_t prvRadioOriginCommand(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString ) {
-
+ 
     long lParam_len;
     const char *cCmd_string;
     char *target_string = NULL;
@@ -107,14 +107,19 @@ static BaseType_t prvRadioMoveCommand(char *pcWriteBuffer, size_t xWriteBufferLe
     /* Get parameters 1 from command string */
     cCmd_string = FreeRTOS_CLIGetParameter(pcCommandString, 1, &lParam_len);
 
-    if( strlen(cCmd_string) > 0 ) {
-        for(target_string = (cCmd_string[0] == '-'?(&cCmd_string[1]):cCmd_string);target_string != NULL && target_string[0] != '\0';target_string++) {
-            if( target_string[0] < '0'
-                || target_string[0] > '9' ) {
+    if( cCmd_string != NULL ) {
+        int i = 0;
+        uint8_t numeric_string[4];
+
+        memset(numeric_string,0x00,sizeof(numeric_string));
+        for( i = 0; i < lParam_len ;i++) {
+            if( cCmd_string[0] < '0'
+                || cCmd_string[0] > '9' ) {
                 return returnedValue;
             }
+            numeric_string[i] = cCmd_string[i];
         }
-        x_coordinate = atoi(cCmd_string);
+        x_coordinate = atoi(numeric_string);
     } else {
         return returnedValue;
     }
@@ -122,14 +127,19 @@ static BaseType_t prvRadioMoveCommand(char *pcWriteBuffer, size_t xWriteBufferLe
     /* Get parameters 2 from command string */
     cCmd_string = FreeRTOS_CLIGetParameter(pcCommandString, 2, &lParam_len);
 
-    if( strlen(cCmd_string) > 0 ) {
-        for(target_string = (cCmd_string[0] == '-'?(&cCmd_string[1]):cCmd_string);target_string != NULL && target_string[0] != '\0';target_string++) {
-            if( target_string[0] < '0'
-                || target_string[0] > '9' ) {
+    if( cCmd_string != NULL ) {
+        int i = 0;
+        uint8_t numeric_string[4];
+
+        memset(numeric_string,0x00,sizeof(numeric_string));
+        for( i = 0; i < lParam_len ;i++) {
+            if( cCmd_string[0] < '0'
+                || cCmd_string[0] > '9' ) {
                 return returnedValue;
             }
+            numeric_string[i] = cCmd_string[i];
         }
-        y_coordinate = atoi(cCmd_string);
+        y_coordinate = atoi(numeric_string);
     } else {
         return returnedValue;
     }
