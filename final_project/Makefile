@@ -16,7 +16,7 @@ PROJ_NAME=main
 #Your local source files
 SRCS = $(PROJ_NAME).c
 CFLAGS += -DENABLE_DEBUG_UART #enable USB Virtual Com Port
-CFLAGS += -DDEBUG #enable Debug
+#CFLAGS += -DDEBUG #enable Debug
 CFLAGS += -DS4527438_SYSMON_CONF_INC
 CFLAGS += -DCOM_BASE_SETTING
 #CFLAGS += -DSORTER1_SETTING
@@ -60,6 +60,9 @@ include /home/csse3010/csse3010/mylib/hamming/filelist.mk
 
 #include pantilt makefile
 include /home/csse3010/csse3010/mylib/radio/filelist.mk
+
+#include atimer makefile
+include /home/csse3010/csse3010/mylib/atimer/filelist.mk
 
 #include nucelo-f429zi makefile - NOTE MUST BE LAST TO INCLUDE
 include $(SOURCELIB_ROOT)/components/boards/nucleo-f429zi/board.mk

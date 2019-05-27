@@ -12,6 +12,7 @@
 #include "stm32f4xx_hal.h"
 #include "debug_printf.h"
 #include "s4527438_os_radio.h"
+#include "s4527438_os_atimer.h"
 #include "s4527438_cli_task.h"
 
 #include "FreeRTOS.h"
@@ -33,6 +34,7 @@ int main(void)  {
     BRD_init();
     Hardware_init();
 
+    s4527438_os_atimer_init();
     s4527438_os_radio_init();
     s4527438_cli_init();
     portENABLE_INTERRUPTS();
