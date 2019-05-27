@@ -104,13 +104,15 @@ void s4527438_lib_hamming_byte_encoder(uint8_t input_byte,unsigned char *encoded
 #define H24     0x10 
 #define H26     0x40 
 static uint8_t hamming_two_hbyte_decoder(uint8_t *encoded_input) {
-    uint8_t s0, s1, s2;
+    uint8_t s0, s1, s2, p_bit;
     uint8_t result = 0;
     uint8_t target_byte = 0;
     uint8_t error_digit_num = 0;
 
     /* Extra high 4 bit from encoded_input[0] */
     target_byte = (encoded_input[0] >> 1);
+
+    p_bit = encoded_input[0] & (0x01);
 
     // Calculate H Row 0
     s0 = (!!(target_byte & H00)) ^ (!!(target_byte & H03)) ^ (!!(target_byte & H04)) ^ (!!(target_byte & H05));
@@ -127,15 +129,18 @@ static uint8_t hamming_two_hbyte_decoder(uint8_t *encoded_input) {
     if( (s0 | s1 | s2) == 0 ) {
         result  = result | (target_byte >> 3);
         result  =   result << 4;
-    } else {
+    } else if( p_bit ) {
         // Correct error
         target_byte = target_byte ^ (1 << (error_digit_num - 1));
         result  = result | (target_byte >> 3);
         result  =   result << 4;
+    } else { 
+        // More than one bit error
     }
 
     /* Extra low 4 bit from encoded_input[1] */
     target_byte = (encoded_input[1] >> 1);
+    p_bit = encoded_input[1] & (0x01);
     error_digit_num = 0;
 
     // Calculate H Row 0
@@ -152,10 +157,12 @@ static uint8_t hamming_two_hbyte_decoder(uint8_t *encoded_input) {
 
     if( (s0 | s1 | s2) == 0 ) {
         result  = result | (target_byte >> 3);
-    } else {
+    } else if( p_bit ) {
         // Correct error
         target_byte = target_byte ^ (1 << (error_digit_num - 1));
         result  = result | (target_byte >> 3);
+    } else {
+        // More than two bit error
     }
 
     return result;

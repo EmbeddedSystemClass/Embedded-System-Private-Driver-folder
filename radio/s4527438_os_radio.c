@@ -37,6 +37,17 @@ typedef enum{
     MESSAGE_TX_KEEPALIVE_ACTION,
     MESSAGE_RX_KEEPALIVE_REPLY_ACTION,
     MESSAGE_RX_ORB_ACTION,
+
+    MESSAGE_SET_CHAN,
+    MESSAGE_GET_CHAN,
+    MESSAGE_SET_TXADDR,
+    MESSAGE_SET_RXADDR,
+    MESSAGE_GET_TXADDR,
+    MESSAGE_GET_RXADDR,
+    MESSAGE_JOIN,
+
+    MESSAGE_LOAD_SORTER,
+    MESSAGE_LOAD_ORB,
 } Message_Type_Enum;
 
 typedef enum{
@@ -68,6 +79,11 @@ struct Message {    /* Message consists of sequence number and payload string */
     uint32_t    x_coordinate;
     uint32_t    y_coordinate;
     uint32_t    z_coordinate;
+
+    uint8_t     select_index;
+    uint8_t     channel;
+    uint8_t     tx_addr[RADIO_HAL_TX_RX_ADDR_STRING_WIDTH + 1];
+    uint8_t     rx_addr[RADIO_HAL_TX_RX_ADDR_STRING_WIDTH + 1];
 };
 
 typedef struct {
@@ -217,7 +233,71 @@ void s4527438_os_radio_init(void) {
 
     xTaskCreate( (void *) &RadioTask, (const signed char *) "RadioTask", mainRADIO_TASK_STACK_SIZE, NULL, mainRADIO_TASK_PRIORITY, &xTaskRadioOsHandle );
 }
+/***********************************************************************************************************/
+void s4527438_os_radio_set_chan(uint32_t channel) {
+    struct Message SendMessage;
 
+    SendMessage.MessageType = MESSAGE_SET_CHAN;
+    SendMessage.channel = channel;
+
+    if (s4527438QueueSorterPacketSend != NULL) { /* Check if queue exists */
+        xQueueSend(s4527438QueueSorterPacketSend, ( void * ) &SendMessage, ( portTickType ) 0 );
+    }
+}
+
+void s4527438_os_radio_get_chan(void) {
+    struct Message SendMessage;
+
+    SendMessage.MessageType = MESSAGE_GET_CHAN;
+
+    if (s4527438QueueSorterPacketSend != NULL) { /* Check if queue exists */
+        xQueueSend(s4527438QueueSorterPacketSend, ( void * ) &SendMessage, ( portTickType ) 0 );
+    }
+}
+
+void s4527438_os_radio_set_txaddr(uint8_t *addr) {
+    struct Message SendMessage;
+
+    SendMessage.MessageType = MESSAGE_SET_TXADDR;
+    memcpy(SendMessage.tx_addr,addr,sizeof(SendMessage.tx_addr));
+
+    if (s4527438QueueSorterPacketSend != NULL) { /* Check if queue exists */
+        xQueueSend(s4527438QueueSorterPacketSend, ( void * ) &SendMessage, ( portTickType ) 0 );
+    }
+}
+
+void s4527438_os_radio_set_rxaddr(uint8_t *addr) {
+    struct Message SendMessage;
+
+    SendMessage.MessageType = MESSAGE_SET_RXADDR;
+    memcpy(SendMessage.rx_addr,addr,sizeof(SendMessage.rx_addr));
+
+    if (s4527438QueueSorterPacketSend != NULL) { /* Check if queue exists */
+        xQueueSend(s4527438QueueSorterPacketSend, ( void * ) &SendMessage, ( portTickType ) 0 );
+    }
+}
+
+void s4527438_os_radio_get_txaddr(void) {
+    struct Message SendMessage;
+
+    SendMessage.MessageType = MESSAGE_GET_TXADDR;
+
+    if (s4527438QueueSorterPacketSend != NULL) { /* Check if queue exists */
+        xQueueSend(s4527438QueueSorterPacketSend, ( void * ) &SendMessage, ( portTickType ) 0 );
+    }
+}
+
+void s4527438_os_radio_get_rxaddr(void) {
+    struct Message SendMessage;
+
+    SendMessage.MessageType = MESSAGE_GET_RXADDR;
+
+    if (s4527438QueueSorterPacketSend != NULL) { /* Check if queue exists */
+        xQueueSend(s4527438QueueSorterPacketSend, ( void * ) &SendMessage, ( portTickType ) 0 );
+    }
+}
+
+/***********************************************************************************************************/
 void s4527438_os_radio_send_join_packet(void) {
     struct Message SendMessage;
 
@@ -272,6 +352,29 @@ void s4527438_os_radio_send_vacuum_packet(Message_Vacuum_Action_Enum vacuum_acti
     }
 
     SendMessage.MessageType = MESSAGE_RX_VACUUM_REPLY_TYPE;
+
+    if (s4527438QueueSorterPacketSend != NULL) { /* Check if queue exists */
+        xQueueSend(s4527438QueueSorterPacketSend, ( void * ) &SendMessage, ( portTickType ) 0 );
+    }
+}
+
+/***********************************************************************************************************/
+void s4527438_os_radio_load_sorter_setting(uint32_t sorter_index) {
+    struct Message SendMessage;
+
+    SendMessage.MessageType = MESSAGE_LOAD_SORTER;
+    SendMessage.select_index = sorter_index;
+
+    if (s4527438QueueSorterPacketSend != NULL) { /* Check if queue exists */
+        xQueueSend(s4527438QueueSorterPacketSend, ( void * ) &SendMessage, ( portTickType ) 0 );
+    }
+}
+
+void s4527438_os_radio_load_orb_setting(uint8_t orb_index) {
+    struct Message SendMessage;
+
+    SendMessage.MessageType = MESSAGE_LOAD_ORB;
+    SendMessage.select_index = orb_index;
 
     if (s4527438QueueSorterPacketSend != NULL) { /* Check if queue exists */
         xQueueSend(s4527438QueueSorterPacketSend, ( void * ) &SendMessage, ( portTickType ) 0 );
@@ -404,6 +507,38 @@ static void radio_RAE_parser(uint8_t *rx_buffer,RAE_Type *parsed_RAE) {
     parsed_RAE->color = swap_1_byte;
 }
 
+static void process_hal_fsm_after_packets_sent(void){
+    while(1){
+        s4527438_hal_radio_fsmprocessing();
+        if(s4527438_hal_radio_get_current_fsm_state() == S4527438_RADIO_TX_STATE ){
+            break;
+        }
+        vTaskDelay(RADIO_RX_RETRY_COUNT_DELAY);
+    }
+    while(1){
+        s4527438_hal_radio_fsmprocessing();
+        if(s4527438_hal_radio_get_current_fsm_state() == S4527438_RADIO_IDLE_STATE ){
+            break;
+        }
+        vTaskDelay(RADIO_RX_RETRY_COUNT_DELAY);
+    }
+    s4527438_hal_radio_setfsmrx();
+    while(1){
+        s4527438_hal_radio_fsmprocessing();
+        if(s4527438_hal_radio_get_current_fsm_state() == S4527438_RADIO_WAITING_STATE ){
+            break;
+        }
+        vTaskDelay(RADIO_RX_RETRY_COUNT_DELAY);
+    }
+    while(1){
+        s4527438_hal_radio_fsmprocessing();
+        if(s4527438_hal_radio_get_current_fsm_state() == S4527438_RADIO_IDLE_STATE ){
+            break;
+        }
+        vTaskDelay(RADIO_RX_RETRY_COUNT_DELAY);
+    }
+}
+
 static void RadioTask( void ) {
 
     struct Message RecvMessage;
@@ -424,12 +559,241 @@ static void RadioTask( void ) {
         /* Which set member was selected?  Receives/takes can use a block time
         of zero as they are guaranteed to pass because xQueueSelectFromSet()
         would not have returned the handle unless something was available. */
-        if (xActivatedMember == s4527438Semaphore_ORB_RX_Event) {  
+        if (xActivatedMember == s4527438QueueSorterPacketSend) {
+
+            /* Receive item */
+            xQueueReceive( s4527438QueueSorterPacketSend, &RecvMessage, 0 );
+
+            switch(RecvMessage.MessageType) {
+                case MESSAGE_SET_CHAN:
+	                s4527438_hal_radio_setchan(RecvMessage.channel);
+                    break;
+                case MESSAGE_GET_CHAN:
+                    {
+	                    uint8_t current_channel;
+	                    current_channel = s4527438_hal_radio_getchan();
+	                    debug_printf("[Current channel]: <%d>\n\r", current_channel);
+                    }
+                    break;
+                case MESSAGE_SET_TXADDR:
+	                s4527438_hal_radio_settxaddress(RecvMessage.tx_addr);
+                    break;
+                case MESSAGE_SET_RXADDR:
+	                s4527438_hal_radio_settxaddress(RecvMessage.rx_addr);
+                    break;
+                case MESSAGE_GET_TXADDR:
+                    {
+	                    uint8_t addr_buffer[RADIO_HAL_TX_RX_ADDR_WIDTH];
+	                    uint8_t addr_string_buffer[RADIO_HAL_TX_RX_ADDR_STRING_WIDTH + 1];
+	                    uint8_t *cur_string;
+                        uint8_t i = 0, j = 0;
+
+	                    s4527438_hal_radio_gettxaddress(addr_buffer);
+	                    debug_printf("[Current tx address]: 0x");
+	                    for (j = 0 ,i = (RADIO_HAL_TX_RX_ADDR_WIDTH - 1); i >= 0 && j < RADIO_HAL_TX_RX_ADDR_STRING_WIDTH ; i--,j+=2) {
+                            sprintf(&(addr_string_buffer[j]),"%02X",addr_buffer[i]);
+	                    }
+                        addr_string_buffer[j] = '\0';
+	                    debug_printf("%s",addr_string_buffer);
+	                    debug_printf("\r\n");
+                    }
+                    break;
+                case MESSAGE_GET_RXADDR:
+                    {
+	                    uint8_t addr_buffer[RADIO_HAL_TX_RX_ADDR_WIDTH];
+	                    uint8_t addr_string_buffer[RADIO_HAL_TX_RX_ADDR_STRING_WIDTH + 1];
+	                    uint8_t *cur_string;
+                        uint8_t i = 0, j = 0;
+
+	                    s4527438_hal_radio_getrxaddress(addr_buffer);
+	                    debug_printf("[Current rx address]: 0x");
+	                    for (j = 0 ,i = (RADIO_HAL_TX_RX_ADDR_WIDTH - 1); i >= 0 && j < RADIO_HAL_TX_RX_ADDR_STRING_WIDTH ; i--,j+=2) {
+                            sprintf(&(addr_string_buffer[j]),"%02X",addr_buffer[i]);
+	                    }
+                        addr_string_buffer[j] = '\0';
+	                    debug_printf("%s",addr_string_buffer);
+	                    debug_printf("\r\n");
+                    }
+                    break;
+                case MESSAGE_JOIN:
+                    break;
+                /***********************************************************************************************************/
+                case MESSAGE_TX_XYZ_TYPE:
+                    while(1){
+                        s4527438_hal_radio_fsmprocessing();
+                        if(s4527438_hal_radio_get_current_fsm_state() == S4527438_RADIO_IDLE_STATE ){
+                            break;
+                        }
+                        vTaskDelay(RADIO_RX_RETRY_COUNT_DELAY);
+                    }
+                    configure_sorter_tx_setting();
+                    snprintf(tx_string,sizeof(tx_string),"XYZ%03d%03d%02d",RecvMessage.x_coordinate,RecvMessage.y_coordinate,RecvMessage.z_coordinate);
+                    s4527438_hal_radio_sendpacket(0,sorter_handler.tx_addr,tx_string);
+
+                    process_hal_fsm_after_packets_sent();
+                    break;
+                case MESSAGE_RX_XYZ_REPLY_TYPE:
+                    s4527438_hal_radio_setfsmrx();
+                    {
+                        uint8_t rx_buffer[RADIO_HAL_TOTAL_PACKET_WIDTH];
+                        memset(rx_buffer,0x00,sizeof(rx_buffer));
+                        for(i = 0;i < RADIO_RX_RETRY_COUNT;i++){
+                            s4527438_hal_radio_fsmprocessing();
+	                        if( s4527438_hal_radio_getrxstatus() == RX_STATUS_PACKET_RECEIVED ) {
+                                s4527438_hal_radio_getpacket(rx_buffer);
+                                if( strcmp(&(rx_buffer[RADIO_HAL_HEADER_WIDTH]),"A C K") == 0 ) {
+                                    break;
+                                }
+                            }
+                            vTaskDelay(RADIO_RX_RETRY_COUNT_DELAY);
+                        }
+                    }
+                    break;
+                case MESSAGE_TX_JOIN_TYPE:
+                    while(1){
+                        s4527438_hal_radio_fsmprocessing();
+                        if(s4527438_hal_radio_get_current_fsm_state() == S4527438_RADIO_IDLE_STATE ){
+                            break;
+                        }
+                        vTaskDelay(RADIO_RX_RETRY_COUNT_DELAY);
+                    }
+                    configure_sorter_tx_setting();
+                    s4527438_hal_radio_sendpacket(0,sorter_handler.tx_addr,"JOIN");
+
+                    process_hal_fsm_after_packets_sent();
+                    break;
+                case MESSAGE_RX_JOIN_REPLY_TYPE:
+                    s4527438_hal_radio_setfsmrx();
+
+                    {
+                        uint8_t rx_buffer[RADIO_HAL_TOTAL_PACKET_WIDTH];
+                        memset(rx_buffer,0x00,sizeof(rx_buffer));
+                        for(i = 0;i < RADIO_RX_RETRY_COUNT;i++){
+                            s4527438_hal_radio_fsmprocessing();
+	                        if( s4527438_hal_radio_getrxstatus() == RX_STATUS_PACKET_RECEIVED ) {
+                                s4527438_hal_radio_getpacket(rx_buffer);
+                                if( strcmp(&(rx_buffer[RADIO_HAL_HEADER_WIDTH]),"A C K") == 0 ) {
+                                    sorter_handler.status = IDLE;
+                                    break;
+                                }
+                            }
+                            vTaskDelay(RADIO_RX_RETRY_COUNT_DELAY);
+                        }
+                    }
+                    break;
+                case MESSAGE_TX_VACUUM_ACTION:
+                    while(1){
+                        s4527438_hal_radio_fsmprocessing();
+                        if(s4527438_hal_radio_get_current_fsm_state() == S4527438_RADIO_IDLE_STATE ){
+                            break;
+                        }
+                        vTaskDelay(RADIO_RX_RETRY_COUNT_DELAY);
+                    }
+                    configure_sorter_tx_setting();
+                    if(RecvMessage.vacuum_action == VACUUM_ON) {
+                        s4527438_hal_radio_sendpacket(0,sorter_handler.tx_addr,"VON");
+                    } else if( RecvMessage.vacuum_action == VACUUM_OFF ) {
+                        s4527438_hal_radio_sendpacket(0,sorter_handler.tx_addr,"VOFF");
+                    }
+                    process_hal_fsm_after_packets_sent();
+                    break;
+                case MESSAGE_RX_VACUUM_REPLY_TYPE:
+                    {
+                        uint8_t rx_buffer[RADIO_HAL_TOTAL_PACKET_WIDTH];
+                        memset(rx_buffer,0x00,sizeof(rx_buffer));
+                        for(i = 0;i < RADIO_RX_RETRY_COUNT;i++){
+                            s4527438_hal_radio_fsmprocessing();
+	                        if( s4527438_hal_radio_getrxstatus() == RX_STATUS_PACKET_RECEIVED ) {
+                                s4527438_hal_radio_getpacket(rx_buffer);
+                                if( strcmp(&(rx_buffer[RADIO_HAL_HEADER_WIDTH]),"A C K") == 0 ) {
+                                    break;
+                                }
+                            }
+                            vTaskDelay(RADIO_RX_RETRY_COUNT_DELAY);
+                        }
+                    }
+                    break;
+                case MESSAGE_TX_KEEPALIVE_ACTION:
+                    configure_sorter_tx_setting();
+                    s4527438_hal_radio_sendpacket(0,sorter_handler.tx_addr,"JOIN");
+                    process_hal_fsm_after_packets_sent();
+                    break;
+                case MESSAGE_RX_KEEPALIVE_REPLY_ACTION:
+                    s4527438_hal_radio_setfsmrx();
+                    {
+                        uint8_t rx_buffer[RADIO_HAL_TOTAL_PACKET_WIDTH];
+                        memset(rx_buffer,0x00,sizeof(rx_buffer));
+                        for(i = 0;i < RADIO_RX_RETRY_COUNT;i++){
+                            s4527438_hal_radio_fsmprocessing();
+	                        if( s4527438_hal_radio_getrxstatus() == RX_STATUS_PACKET_RECEIVED ) {
+                                s4527438_hal_radio_getpacket(rx_buffer);
+                                if( strcmp(&(rx_buffer[RADIO_HAL_HEADER_WIDTH]),"A C K") == 0 ) {
+                                    if( sorter_handler.status == OPERATING_COMMAND ) {
+                                        sorter_handler.status = IDLE;
+                                    }
+                                    break;
+                                }
+                            }
+                            vTaskDelay(RADIO_RX_RETRY_COUNT_DELAY);
+                        }
+                    }
+                    break;
+                /***********************************************************************************************************/
+                case MESSAGE_LOAD_SORTER:
+                    if( RecvMessage.select_index == 1) {
+                        memcpy(sorter_handler.tx_addr,SORTER_1_TX_DESTINATION_ADDR_STRING,sizeof(sorter_handler.tx_addr));
+                        memcpy(sorter_handler.rx_addr,SELF_SOURCE_ADDR_STRING,sizeof(sorter_handler.rx_addr));
+                        sorter_handler.channel = SORTER_1_TX_CHANNEL;
+                    } else if (RecvMessage.select_index == 2) {
+                        memcpy(sorter_handler.tx_addr,SORTER_2_TX_DESTINATION_ADDR_STRING,sizeof(sorter_handler.tx_addr));
+                        memcpy(sorter_handler.rx_addr,SELF_SOURCE_ADDR_STRING,sizeof(sorter_handler.rx_addr));
+                        sorter_handler.channel = SORTER_2_TX_CHANNEL;
+                    } else if (RecvMessage.select_index == 3) {
+                        memcpy(sorter_handler.tx_addr,SORTER_3_TX_DESTINATION_ADDR_STRING,sizeof(sorter_handler.tx_addr));
+                        memcpy(sorter_handler.rx_addr,SELF_SOURCE_ADDR_STRING,sizeof(sorter_handler.rx_addr));
+                        sorter_handler.channel = SORTER_3_TX_CHANNEL;
+                    } else if (RecvMessage.select_index == 4) {
+                        memcpy(sorter_handler.tx_addr,SORTER_4_TX_DESTINATION_ADDR_STRING,sizeof(sorter_handler.tx_addr));
+                        memcpy(sorter_handler.rx_addr,SELF_SOURCE_ADDR_STRING,sizeof(sorter_handler.rx_addr));
+                        sorter_handler.channel = SORTER_4_TX_CHANNEL;
+                    }
+                    break;
+                case MESSAGE_LOAD_ORB:
+                    if( RecvMessage.select_index == 1) {
+                        memcpy(orb_handler.tx_addr,ORB_1_RX_DESTINATION_ADDR_STRING,sizeof(sorter_handler.tx_addr));
+                        memcpy(orb_handler.rx_addr,SELF_SOURCE_ADDR_STRING,sizeof(orb_handler.rx_addr));
+                        orb_handler.channel = ORB_1_RX_CHANNEL;
+                    } else if (RecvMessage.select_index == 2) {
+                        memcpy(orb_handler.tx_addr,ORB_2_RX_DESTINATION_ADDR_STRING,sizeof(sorter_handler.tx_addr));
+                        memcpy(orb_handler.rx_addr,SELF_SOURCE_ADDR_STRING,sizeof(orb_handler.rx_addr));
+                        orb_handler.channel = ORB_2_RX_CHANNEL;
+                    } else if (RecvMessage.select_index == 3) {
+                        memcpy(orb_handler.tx_addr,ORB_3_RX_DESTINATION_ADDR_STRING,sizeof(sorter_handler.tx_addr));
+                        memcpy(orb_handler.rx_addr,SELF_SOURCE_ADDR_STRING,sizeof(orb_handler.rx_addr));
+                        orb_handler.channel = ORB_3_RX_CHANNEL;
+                    } else if (RecvMessage.select_index == 4) {
+                        memcpy(orb_handler.tx_addr,ORB_4_RX_DESTINATION_ADDR_STRING,sizeof(sorter_handler.tx_addr));
+                        memcpy(orb_handler.rx_addr,SELF_SOURCE_ADDR_STRING,sizeof(orb_handler.rx_addr));
+                        orb_handler.channel = ORB_4_RX_CHANNEL;
+                    }
+                    break;
+            }
+
+#if 0
+#ifdef DEBUG
+            portENTER_CRITICAL();
+            debug_printf("Received: angle = %d\n\r", RecvMessage.angle);
+            portEXIT_CRITICAL();
+#endif
+#endif
+
+        } else if (xActivatedMember == s4527438Semaphore_ORB_RX_Event) {  
             RAE_Type parsed_RAE;
 
             /* We were able to obtain the semaphore and can now access the shared resource. */
             xSemaphoreTake(s4527438Semaphore_ORB_RX_Event, 0 );
 
+            {
                     while(1){
                         s4527438_hal_radio_fsmprocessing();
                         if(s4527438_hal_radio_get_current_fsm_state() == S4527438_RADIO_IDLE_STATE ){
@@ -474,240 +838,7 @@ static void RadioTask( void ) {
                             vTaskDelay(RADIO_RX_RETRY_COUNT_DELAY);
                         }
                     }
-        } else if (xActivatedMember == s4527438QueueSorterPacketSend) {
-
-            /* Receive item */
-            xQueueReceive( s4527438QueueSorterPacketSend, &RecvMessage, 0 );
-
-            switch(RecvMessage.MessageType) {
-                case MESSAGE_TX_XYZ_TYPE:
-                    while(1){
-                        s4527438_hal_radio_fsmprocessing();
-                        if(s4527438_hal_radio_get_current_fsm_state() == S4527438_RADIO_IDLE_STATE ){
-                            break;
-                        }
-                        vTaskDelay(RADIO_RX_RETRY_COUNT_DELAY);
-                    }
-                    configure_sorter_tx_setting();
-                    snprintf(tx_string,sizeof(tx_string),"XYZ%03d%03d%02d",RecvMessage.x_coordinate,RecvMessage.y_coordinate,RecvMessage.z_coordinate);
-                    s4527438_hal_radio_sendpacket(0,sorter_handler.tx_addr,tx_string);
-
-                    while(1){
-                        s4527438_hal_radio_fsmprocessing();
-                        if(s4527438_hal_radio_get_current_fsm_state() == S4527438_RADIO_TX_STATE ){
-                            break;
-                        }
-                        vTaskDelay(RADIO_RX_RETRY_COUNT_DELAY);
-                    }
-                    while(1){
-                        s4527438_hal_radio_fsmprocessing();
-                        if(s4527438_hal_radio_get_current_fsm_state() == S4527438_RADIO_IDLE_STATE ){
-                            break;
-                        }
-                        vTaskDelay(RADIO_RX_RETRY_COUNT_DELAY);
-                    }
-                    s4527438_hal_radio_setfsmrx();
-                    while(1){
-                        s4527438_hal_radio_fsmprocessing();
-                        if(s4527438_hal_radio_get_current_fsm_state() == S4527438_RADIO_WAITING_STATE ){
-                            break;
-                        }
-                        vTaskDelay(RADIO_RX_RETRY_COUNT_DELAY);
-                    }
-                    while(1){
-                        s4527438_hal_radio_fsmprocessing();
-                        if(s4527438_hal_radio_get_current_fsm_state() == S4527438_RADIO_IDLE_STATE ){
-                            break;
-                        }
-                        vTaskDelay(RADIO_RX_RETRY_COUNT_DELAY);
-                    }
-                    break;
-                case MESSAGE_RX_XYZ_REPLY_TYPE:
-                    s4527438_hal_radio_setfsmrx();
-                    {
-                        uint8_t rx_buffer[RADIO_HAL_TOTAL_PACKET_WIDTH];
-                        memset(rx_buffer,0x00,sizeof(rx_buffer));
-                        for(i = 0;i < RADIO_RX_RETRY_COUNT;i++){
-                            s4527438_hal_radio_fsmprocessing();
-	                        if( s4527438_hal_radio_getrxstatus() == RX_STATUS_PACKET_RECEIVED ) {
-                                s4527438_hal_radio_getpacket(rx_buffer);
-                                if( strcmp(&(rx_buffer[RADIO_HAL_HEADER_WIDTH]),"A C K") == 0 ) {
-                                    break;
-                                }
-                            }
-                            vTaskDelay(RADIO_RX_RETRY_COUNT_DELAY);
-                        }
-                    }
-                    break;
-                case MESSAGE_TX_JOIN_TYPE:
-                    while(1){
-                        s4527438_hal_radio_fsmprocessing();
-                        if(s4527438_hal_radio_get_current_fsm_state() == S4527438_RADIO_IDLE_STATE ){
-                            break;
-                        }
-                        vTaskDelay(RADIO_RX_RETRY_COUNT_DELAY);
-                    }
-                    configure_sorter_tx_setting();
-                    s4527438_hal_radio_sendpacket(0,sorter_handler.tx_addr,"JOIN");
-
-                    while(1){
-                        s4527438_hal_radio_fsmprocessing();
-                        if(s4527438_hal_radio_get_current_fsm_state() == S4527438_RADIO_TX_STATE ){
-                            break;
-                        }
-                        vTaskDelay(RADIO_RX_RETRY_COUNT_DELAY);
-                    }
-                    while(1){
-                        s4527438_hal_radio_fsmprocessing();
-                        if(s4527438_hal_radio_get_current_fsm_state() == S4527438_RADIO_IDLE_STATE ){
-                            break;
-                        }
-                        vTaskDelay(RADIO_RX_RETRY_COUNT_DELAY);
-                    }
-                    s4527438_hal_radio_setfsmrx();
-                    while(1){
-                        s4527438_hal_radio_fsmprocessing();
-                        if(s4527438_hal_radio_get_current_fsm_state() == S4527438_RADIO_WAITING_STATE ){
-                            break;
-                        }
-                        vTaskDelay(RADIO_RX_RETRY_COUNT_DELAY);
-                    }
-                    while(1){
-                        s4527438_hal_radio_fsmprocessing();
-                        if(s4527438_hal_radio_get_current_fsm_state() == S4527438_RADIO_IDLE_STATE ){
-                            break;
-                        }
-                        vTaskDelay(RADIO_RX_RETRY_COUNT_DELAY);
-                    }
-                    break;
-                case MESSAGE_RX_JOIN_REPLY_TYPE:
-                    s4527438_hal_radio_setfsmrx();
-
-                    {
-                        uint8_t rx_buffer[RADIO_HAL_TOTAL_PACKET_WIDTH];
-                        memset(rx_buffer,0x00,sizeof(rx_buffer));
-                        for(i = 0;i < RADIO_RX_RETRY_COUNT;i++){
-                            s4527438_hal_radio_fsmprocessing();
-	                        if( s4527438_hal_radio_getrxstatus() == RX_STATUS_PACKET_RECEIVED ) {
-                                s4527438_hal_radio_getpacket(rx_buffer);
-                                if( strcmp(&(rx_buffer[RADIO_HAL_HEADER_WIDTH]),"A C K") == 0 ) {
-                                    sorter_handler.status = IDLE;
-                                    break;
-                                }
-                            }
-                            vTaskDelay(RADIO_RX_RETRY_COUNT_DELAY);
-                        }
-                    }
-                    break;
-                case MESSAGE_TX_VACUUM_ACTION:
-                    while(1){
-                        s4527438_hal_radio_fsmprocessing();
-                        if(s4527438_hal_radio_get_current_fsm_state() == S4527438_RADIO_IDLE_STATE ){
-                            break;
-                        }
-                        vTaskDelay(RADIO_RX_RETRY_COUNT_DELAY);
-                    }
-                    configure_sorter_tx_setting();
-                    if(RecvMessage.vacuum_action == VACUUM_ON) {
-                        s4527438_hal_radio_sendpacket(0,sorter_handler.tx_addr,"VON");
-                    } else if( RecvMessage.vacuum_action == VACUUM_OFF ) {
-                        s4527438_hal_radio_sendpacket(0,sorter_handler.tx_addr,"VOFF");
-                    }
-                    while(1){
-                        s4527438_hal_radio_fsmprocessing();
-                        if(s4527438_hal_radio_get_current_fsm_state() == S4527438_RADIO_TX_STATE ){
-                            break;
-                        }
-                        vTaskDelay(RADIO_RX_RETRY_COUNT_DELAY);
-                    }
-                    while(1){
-                        s4527438_hal_radio_fsmprocessing();
-                        if(s4527438_hal_radio_get_current_fsm_state() == S4527438_RADIO_IDLE_STATE ){
-                            break;
-                        }
-                        vTaskDelay(RADIO_RX_RETRY_COUNT_DELAY);
-                    }
-                    s4527438_hal_radio_setfsmrx();
-                    while(1){
-                        s4527438_hal_radio_fsmprocessing();
-                        if(s4527438_hal_radio_get_current_fsm_state() == S4527438_RADIO_WAITING_STATE ){
-                            break;
-                        }
-                        vTaskDelay(RADIO_RX_RETRY_COUNT_DELAY);
-                    }
-                    while(1){
-                        s4527438_hal_radio_fsmprocessing();
-                        if(s4527438_hal_radio_get_current_fsm_state() == S4527438_RADIO_IDLE_STATE ){
-                            break;
-                        }
-                        vTaskDelay(RADIO_RX_RETRY_COUNT_DELAY);
-                    }
-                    break;
-                case MESSAGE_RX_VACUUM_REPLY_TYPE:
-                    {
-                        uint8_t rx_buffer[RADIO_HAL_TOTAL_PACKET_WIDTH];
-                        memset(rx_buffer,0x00,sizeof(rx_buffer));
-                        for(i = 0;i < RADIO_RX_RETRY_COUNT;i++){
-                            s4527438_hal_radio_fsmprocessing();
-	                        if( s4527438_hal_radio_getrxstatus() == RX_STATUS_PACKET_RECEIVED ) {
-                                s4527438_hal_radio_getpacket(rx_buffer);
-                                if( strcmp(&(rx_buffer[RADIO_HAL_HEADER_WIDTH]),"A C K") == 0 ) {
-                                    break;
-                                }
-                            }
-                            vTaskDelay(RADIO_RX_RETRY_COUNT_DELAY);
-                        }
-                    }
-                    break;
-                case MESSAGE_TX_KEEPALIVE_ACTION:
-                    configure_sorter_tx_setting();
-                    s4527438_hal_radio_sendpacket(0,sorter_handler.tx_addr,"JOIN");
-                    while(1){
-                        s4527438_hal_radio_fsmprocessing();
-                        if(s4527438_hal_radio_get_current_fsm_state() == S4527438_RADIO_TX_STATE ){
-                            break;
-                        }
-                        vTaskDelay(10);
-                    }
-                    while(1){
-                        s4527438_hal_radio_fsmprocessing();
-                        if(s4527438_hal_radio_get_current_fsm_state() == S4527438_RADIO_IDLE_STATE ){
-                            break;
-                        }
-                        vTaskDelay(10);
-                    }
-                    s4527438_hal_radio_setfsmrx();
-                    break;
-                case MESSAGE_RX_KEEPALIVE_REPLY_ACTION:
-                    s4527438_hal_radio_setfsmrx();
-                    {
-                        uint8_t rx_buffer[RADIO_HAL_TOTAL_PACKET_WIDTH];
-                        memset(rx_buffer,0x00,sizeof(rx_buffer));
-                        for(i = 0;i < RADIO_RX_RETRY_COUNT;i++){
-                            s4527438_hal_radio_fsmprocessing();
-	                        if( s4527438_hal_radio_getrxstatus() == RX_STATUS_PACKET_RECEIVED ) {
-                                s4527438_hal_radio_getpacket(rx_buffer);
-                                if( strcmp(&(rx_buffer[RADIO_HAL_HEADER_WIDTH]),"A C K") == 0 ) {
-                                    if( sorter_handler.status == OPERATING_COMMAND ) {
-                                        sorter_handler.status = IDLE;
-                                    }
-                                    break;
-                                }
-                            }
-                            vTaskDelay(RADIO_RX_RETRY_COUNT_DELAY);
-                        }
-                    }
-                    break;
             }
-
-#if 0
-#ifdef DEBUG
-            portENTER_CRITICAL();
-            debug_printf("Received: angle = %d\n\r", RecvMessage.angle);
-            portEXIT_CRITICAL();
-#endif
-#endif
-
         }
 
         s4527438_hal_radio_fsmprocessing();
