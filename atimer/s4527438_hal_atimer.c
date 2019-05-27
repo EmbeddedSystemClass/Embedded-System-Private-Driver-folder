@@ -39,7 +39,7 @@ static int atimerPeriodVal = S4527438_HAL_ATIMER_PERIOD;
 static int atimerClkspeedVal = S4527438_HAL_ATIMER_CLKSPEED;
 static uint32_t atimerPrescalerVal = 0;
 int atimerCounterVal = 0;
-static int32_t atimerCounterValMax = 0;
+int32_t atimerCounterValMax = 0;
 
 static TIM_HandleTypeDef TimHandle;
 /* Private function prototypes -----------------------------------------------*/

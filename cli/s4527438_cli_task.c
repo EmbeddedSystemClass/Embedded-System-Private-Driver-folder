@@ -26,6 +26,7 @@
 
 //#include "s4527438_cli_pantilt.h"
 #include "s4527438_cli_radio.h"
+#include "s4527438_cli_atimer.h"
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
@@ -46,6 +47,7 @@ void s4527438_cli_init(void) {
 #endif
 //#ifndef S4527438_CLI_RADIO_H_
     s4527438_cli_radio_init();
+    s4527438_cli_atimer_init();
 //#endif
 
     xTaskCreate( (void *) &CLI_Task, (const signed char *) "CLI", mainCLI_TASK_STACK_SIZE, NULL, mainCLI_PRIORITY, &xTaskCliHandle );
