@@ -55,6 +55,7 @@ static BaseType_t prvRadioOrbSetCp(char *pcWriteBuffer, size_t xWriteBufferLen, 
 static BaseType_t prvRadioOrbShow(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString );
 static BaseType_t prvRadioOrbOrbOnOff(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString );
 static BaseType_t prvRadioOrbTestSendRAE(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString );
+static BaseType_t prvRadioRadioOrbDebugRAE4BitSwapOnOff(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString );
 
 static BaseType_t prvRadioLoadSorter(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString );
 static BaseType_t prvRadioLoadOrb(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString );
@@ -162,6 +163,12 @@ CLI_Command_Definition_t xRadioOrbTestSendRAE = {  /* Structure that defines the
     prvRadioOrbTestSendRAE,
     3
 };
+CLI_Command_Definition_t xRadioOrbDebugRAE4BitSwapOnOff = {  /* Structure that defines the "pan" command line command. */
+    "orb4bitswap",
+    "orb4bitswap: orb4bitswap <on|off> \r\n",
+    prvRadioRadioOrbDebugRAE4BitSwapOnOff,
+    1
+};
 /***********************************************************************************************************/
 CLI_Command_Definition_t xRadioLoadSorter = {  /* Structure that defines the "pan" command line command. */
     "loadsorter",
@@ -192,6 +199,7 @@ void s4527438_cli_radio_init(void) {
     FreeRTOS_CLIRegisterCommand(&xRadioOrbShow);
     FreeRTOS_CLIRegisterCommand(&xRadioOrbOnOff);
     FreeRTOS_CLIRegisterCommand(&xRadioOrbTestSendRAE);
+    FreeRTOS_CLIRegisterCommand(&xRadioOrbDebugRAE4BitSwapOnOff);
 
     /* Register CLI commands */
     FreeRTOS_CLIRegisterCommand(&xRadioOrigin);
@@ -664,6 +672,30 @@ static BaseType_t prvRadioOrbTestSendRAE(char *pcWriteBuffer, size_t xWriteBuffe
     }
 
     s4527438_os_radio_orb_test_send_RAE(color_index,x_coordinate,y_coordinate);
+
+    return returnedValue;
+}
+
+static BaseType_t prvRadioRadioOrbDebugRAE4BitSwapOnOff(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString ) {
+
+    long lParam_len;
+    const char *cCmd_string;
+    char *target_string = NULL;
+    uint8_t on_off_switch = RADIO_TYPE_ON;
+    // We always need to stop search further, even if the command is not correct
+    BaseType_t returnedValue = pdFALSE;
+
+    /* Get parameters 1 from command string */
+    cCmd_string = FreeRTOS_CLIGetParameter(pcCommandString, 1, &lParam_len);
+
+    if( strcmp(cCmd_string,"on") == 0 ) {
+        on_off_switch = RADIO_TYPE_ON;
+    } else if( strcmp(cCmd_string,"off") == 0 ) {
+        on_off_switch = RADIO_TYPE_OFF;
+    } else {
+        return returnedValue;
+    }
+    s4527438_os_radio_orb_debug_RAE_4_bit_swap_on_off(on_off_switch);
 
     return returnedValue;
 }

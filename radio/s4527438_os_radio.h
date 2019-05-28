@@ -30,6 +30,7 @@ void s4527438_os_radio_set_cp(uint8_t color,uint32_t x_coordinate, uint32_t y_co
 void s4527438_os_radio_orb_show_rx_message(uint8_t is_display_message);
 void s4527438_os_radio_orb_on_off(uint8_t is_switch);
 void s4527438_os_radio_orb_test_send_RAE(uint8_t color,uint32_t x_coordinate, uint32_t y_coordinate);
+void s4527438_os_radio_orb_debug_RAE_4_bit_swap_on_off(uint8_t is_switch);
 
 void s4527438_os_radio_init(void);
 void s4527438_os_radio_send_join_packet(void);

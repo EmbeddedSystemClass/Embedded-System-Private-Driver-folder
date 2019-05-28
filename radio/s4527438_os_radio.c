@@ -51,6 +51,7 @@ typedef enum{
     MESSAGE_ORB_SHOW_CMD,
     MESSAGE_ORB_ON_OFF_CMD,
     MESSAGE_ORB_TEST_SEND_RAE_COLOR_AND_COORDINATE,
+    MESSAGE_ORB_DEBUG_4_BIT_SWAP_ON_OFF_CMD,
 
     MESSAGE_LOAD_SORTER,
     MESSAGE_LOAD_ORB,
@@ -88,6 +89,8 @@ typedef struct{
     uint8_t     rx_addr[RADIO_HAL_TX_RX_ADDR_STRING_WIDTH + 1];
     uint8_t     is_display_message;
     uint8_t     is_switch;
+
+    uint8_t     is_enable_4_bit_swap;
 }ORB_handler_Type;
 
 struct Message {    /* Message consists of sequence number and payload string */
@@ -241,6 +244,7 @@ void s4527438_os_radio_init(void) {
 #endif
 
     /* Init ORB */ 
+    orb_handler.is_enable_4_bit_swap = RADIO_TYPE_ON;
 
     s4527438Semaphore_ORB_RX_Event = xSemaphoreCreateBinary();
 
@@ -361,6 +365,17 @@ void s4527438_os_radio_orb_test_send_RAE(uint8_t color,uint32_t x_coordinate, ui
     SendMessage.color = color;
     SendMessage.x_coordinate = x_coordinate;
     SendMessage.y_coordinate = y_coordinate;
+
+    if (s4527438QueueSorterPacketSend != NULL) { /* Check if queue exists */
+        xQueueSend(s4527438QueueSorterPacketSend, ( void * ) &SendMessage, ( portTickType ) 0 );
+    }
+}
+
+void s4527438_os_radio_orb_debug_RAE_4_bit_swap_on_off(uint8_t is_switch) {
+    struct Message SendMessage;
+
+    SendMessage.MessageType = MESSAGE_ORB_DEBUG_4_BIT_SWAP_ON_OFF_CMD;
+    SendMessage.is_switch = is_switch;
 
     if (s4527438QueueSorterPacketSend != NULL) { /* Check if queue exists */
         xQueueSend(s4527438QueueSorterPacketSend, ( void * ) &SendMessage, ( portTickType ) 0 );
@@ -553,6 +568,10 @@ static void configure_orb_rx_setting(void) {
 
 static uint8_t swap_4_bit(uint8_t *input_byte){
     uint8_t result_1_byte = 0;
+
+    if( orb_handler.is_enable_4_bit_swap == RADIO_TYPE_OFF ) {
+        return;
+    }
 
     result_1_byte = ((*input_byte) & LOW_4_BIT);
     result_1_byte = (result_1_byte << 4);
@@ -779,6 +798,10 @@ static void RadioTask( void ) {
 
 	                    debug_printf("[Enter send RAE]\r\n");
                     }
+                    break;
+                case MESSAGE_ORB_DEBUG_4_BIT_SWAP_ON_OFF_CMD:
+                    orb_handler.is_enable_4_bit_swap = RecvMessage.is_switch;
+	                debug_printf("[orb 4bit swap on/off]: <%d>\r\n",orb_handler.is_enable_4_bit_swap);
                     break;
                 /***********************************************************************************************************/
                 case MESSAGE_TX_XYZ_TYPE:
