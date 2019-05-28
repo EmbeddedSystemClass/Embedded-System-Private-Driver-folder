@@ -53,5 +53,6 @@ int s4527438_hal_radio_get_current_fsm_state(void);
 #define RX_STATUS_NO_PACKET_RECEIVED        0
 #define RX_STATUS_PACKET_RECEIVED           1
 #define RX_STATUS_PACKET_COPIED_BY_USER     2
+#define RX_STATUS_PACKET_DECODE_ERROR       3 
 
 #endif /* S4527438_HAL_RADIO_H_ */

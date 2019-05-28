@@ -811,6 +811,8 @@ static void RadioTask( void ) {
                                     debug_printf("Received: A C K\n\r");
                                     break;
                                 }
+                            } else if( s4527438_hal_radio_getrxstatus() == RX_STATUS_PACKET_DECODE_ERROR ) {
+                                debug_printf("[H ERROR][2-bit error]\n\r");
                             }
                             vTaskDelay(RADIO_RX_RETRY_COUNT_DELAY);
                         }
@@ -844,6 +846,8 @@ static void RadioTask( void ) {
                                     debug_printf("Received: A C K\n\r");
                                     break;
                                 }
+                            } else if( s4527438_hal_radio_getrxstatus() == RX_STATUS_PACKET_DECODE_ERROR ) {
+                                debug_printf("[H ERROR][2-bit error]\n\r");
                             }
                             vTaskDelay(RADIO_RX_RETRY_COUNT_DELAY);
                         }
@@ -877,6 +881,8 @@ static void RadioTask( void ) {
                                     debug_printf("Received: A C K\n\r");
                                     break;
                                 }
+                            } else if( s4527438_hal_radio_getrxstatus() == RX_STATUS_PACKET_DECODE_ERROR ) {
+                                debug_printf("[H ERROR][2-bit error]\n\r");
                             }
                             vTaskDelay(RADIO_RX_RETRY_COUNT_DELAY);
                         }
@@ -902,6 +908,8 @@ static void RadioTask( void ) {
                                     }
                                     break;
                                 }
+                            } else if( s4527438_hal_radio_getrxstatus() == RX_STATUS_PACKET_DECODE_ERROR ) {
+                                debug_printf("[H ERROR][2-bit error]\n\r");
                             }
                             vTaskDelay(RADIO_RX_RETRY_COUNT_DELAY);
                         }
@@ -1033,6 +1041,8 @@ static void RadioTask( void ) {
                                                                                                                           );
 #endif
                                 break;
+                            } else if( s4527438_hal_radio_getrxstatus() == RX_STATUS_PACKET_DECODE_ERROR ) {
+                                debug_printf("[H ERROR][2-bit error]\n\r");
                             }
                             vTaskDelay(RADIO_RX_RETRY_COUNT_DELAY);
                         }

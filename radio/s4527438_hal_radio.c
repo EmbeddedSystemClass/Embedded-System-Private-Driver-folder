@@ -472,6 +472,7 @@ static void WAITING_STATE_state_handle_fsm_process(void) {
     // Check for received packet and display
     if (radio_fsm_read(rxBuffer) == RADIO_FSM_DONE) {
         uint8_t decoded_buffer[ENCODE_WIDTH];
+        uint8_t decode_result = 0;
 
 #ifdef DEBUG
         debug_printf("Received: ");
@@ -482,7 +483,11 @@ static void WAITING_STATE_state_handle_fsm_process(void) {
         i = NO_ENCODE_WIDTH;
         memset(decoded_buffer,0x00,sizeof(decoded_buffer));
         for (j = 0; i < RADIO_HAL_TOTAL_PACKET_WIDTH; i+=2,j++) {
-            s4527438_lib_hamming_byte_decoder(&(rxBuffer[i]),&(decoded_buffer[j]));
+            decode_result = s4527438_lib_hamming_byte_decoder(&(rxBuffer[i]),&(decoded_buffer[j]));
+            if( decode_result ) {
+                halRadioRxstatus = RX_STATUS_PACKET_DECODE_ERROR;
+                return;
+            }
 #ifdef DEBUG
             debug_printf("%02x(%c)", decoded_buffer[j],decoded_buffer[j]);
 #endif
