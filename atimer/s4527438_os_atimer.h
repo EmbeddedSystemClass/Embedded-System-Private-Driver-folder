@@ -16,4 +16,5 @@
 
 void s4527438_os_atimer_init(void);
 void s4527438_os_atimer_send_timer_print_event(void);
+uint32_t s4527438_os_atimer_read_ms(void);
 #endif /* S4527438_OS_RADIO_H_ */

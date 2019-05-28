@@ -66,6 +66,20 @@ void s4527438_os_atimer_send_timer_print_event(void) {
     }
 }
 
+uint32_t s4527438_os_atimer_read_ms(void) {
+    int cur_val_ms = 0;
+
+    /* Update timer value to calculate overflow times */
+    atimerPreVal = atimerCurVal;
+    atimerCurVal = s4527438_hal_atimer_timer_read();
+    if( atimerPreVal > atimerCurVal ) {
+        over_max_value_count++;
+    }
+
+    cur_val_ms = s4527438_hal_atimer_timer_getms();
+    debug_printf("[Cur Sys Time(ms)] : <%d>\n\r", over_max_value_count*count_max_value + cur_val_ms );
+}
+
 static void AtimerTask( void ) {
 
     QueueSetMemberHandle_t xActivatedMember;

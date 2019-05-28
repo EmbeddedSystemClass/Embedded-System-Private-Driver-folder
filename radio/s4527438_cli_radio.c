@@ -54,6 +54,11 @@ static BaseType_t prvRadioMoveCommand(char *pcWriteBuffer, size_t xWriteBufferLe
 static BaseType_t prvRadioHeadCommand(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString );
 static BaseType_t prvRadioVacuumCommand(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString );
 
+static BaseType_t prvRadioOrbSetCp(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString );
+static BaseType_t prvRadioOrbShow(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString );
+static BaseType_t prvRadioOrbOrbOnOff(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString );
+static BaseType_t prvRadioOrbTestSendRAE(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString );
+
 static BaseType_t prvRadioLoadSorter(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString );
 static BaseType_t prvRadioLoadOrb(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString );
 
@@ -136,6 +141,31 @@ CLI_Command_Definition_t xRadioJoin = {  /* Structure that defines the "pan" com
 };
 
 /***********************************************************************************************************/
+CLI_Command_Definition_t xRadioOrbSetCp = {  /* Structure that defines the "pan" command line command. */
+    "cp",
+    "cp: cp <red|green|blue|yellow|orange> <x_coordinate> <y_coordinate> \r\n",
+    prvRadioOrbSetCp,
+    3
+};
+CLI_Command_Definition_t xRadioOrbShow = {  /* Structure that defines the "pan" command line command. */
+    "show",
+    "show: show <on|off> \r\n",
+    prvRadioOrbShow,
+    1
+};
+CLI_Command_Definition_t xRadioOrbOnOff = {  /* Structure that defines the "pan" command line command. */
+    "orb",
+    "orb: orb <on|off> \r\n",
+    prvRadioOrbOrbOnOff,
+    1
+};
+CLI_Command_Definition_t xRadioOrbTestSendRAE = {  /* Structure that defines the "pan" command line command. */
+    "orbtest",
+    "orbtest: orbtest <red|green|blue|yellow|orange> <x_coordinate> <y_coordinate> \r\n",
+    prvRadioOrbTestSendRAE,
+    3
+};
+/***********************************************************************************************************/
 CLI_Command_Definition_t xRadioLoadSorter = {  /* Structure that defines the "pan" command line command. */
     "loadsorter",
     "loadsorter: loadsorter <LAB sorter index(1 ~ 4))> \r\n",
@@ -159,6 +189,12 @@ void s4527438_cli_radio_init(void) {
     FreeRTOS_CLIRegisterCommand(&xRadioGetRxAddr);
     FreeRTOS_CLIRegisterCommand(&xRadioGetTxAddr);
     FreeRTOS_CLIRegisterCommand(&xRadioJoin);
+
+    /* Register CLI commands */
+    FreeRTOS_CLIRegisterCommand(&xRadioOrbSetCp);
+    FreeRTOS_CLIRegisterCommand(&xRadioOrbShow);
+    FreeRTOS_CLIRegisterCommand(&xRadioOrbOnOff);
+    FreeRTOS_CLIRegisterCommand(&xRadioOrbTestSendRAE);
 
     /* Register CLI commands */
     FreeRTOS_CLIRegisterCommand(&xRadioOrigin);
@@ -434,6 +470,216 @@ static BaseType_t prvRadioVacuumCommand(char *pcWriteBuffer, size_t xWriteBuffer
     return returnedValue;
 }
 
+/***********************************************************************************************************/
+static BaseType_t prvRadioOrbSetCp(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString ) {
+
+    long lParam_len;
+    const char *cCmd_string;
+    char *target_string = NULL;
+    uint32_t x_coordinate = 0;
+    uint32_t y_coordinate = 0;
+    uint8_t  color_index = 0;
+    // We always need to stop search further, even if the command is not correct
+    BaseType_t returnedValue = pdFALSE;
+
+    /* Get parameters 1 from command string */
+    cCmd_string = FreeRTOS_CLIGetParameter(pcCommandString, 1, &lParam_len);
+
+    if( cCmd_string != NULL ) {
+        int i = 0;
+        uint8_t  *color_map[OBJ_COLOR_MAX + 1] = {"NO COLOR","red","green","blue","yellow","orange"};
+        uint8_t  color_string[9];
+
+        memset(color_string,0x00,sizeof(color_string));
+        memcpy(color_string,cCmd_string,lParam_len);
+
+        for( i = 0; i < (OBJ_COLOR_MAX + 1) ;i++) {
+            if( strcmp(color_string,color_map[i]) == 0) {
+                break;
+            }
+        }
+        if( i == (OBJ_COLOR_MAX + 1) ) {
+            color_index = 0;
+        } else {
+            color_index = i;
+        }
+    } else {
+        return returnedValue;
+    }
+
+    /* Get parameters 2 from command string */
+    cCmd_string = FreeRTOS_CLIGetParameter(pcCommandString, 2, &lParam_len);
+
+    if( cCmd_string != NULL ) {
+        int i = 0;
+        uint8_t numeric_string[4];
+
+        memset(numeric_string,0x00,sizeof(numeric_string));
+        for( i = 0; i < lParam_len ;i++) {
+            if( cCmd_string[i] < '0'
+                || cCmd_string[i] > '9' ) {
+                return returnedValue;
+            }
+            numeric_string[i] = cCmd_string[i];
+        }
+        x_coordinate = atoi(numeric_string);
+    } else {
+        return returnedValue;
+    }
+
+    /* Get parameters 3 from command string */
+    cCmd_string = FreeRTOS_CLIGetParameter(pcCommandString, 3, &lParam_len);
+
+    if( cCmd_string != NULL ) {
+        int i = 0;
+        uint8_t numeric_string[4];
+
+        memset(numeric_string,0x00,sizeof(numeric_string));
+        for( i = 0; i < lParam_len ;i++) {
+            if( cCmd_string[i] < '0'
+                || cCmd_string[i] > '9' ) {
+                return returnedValue;
+            }
+            numeric_string[i] = cCmd_string[i];
+        }
+        y_coordinate = atoi(numeric_string);
+    } else {
+        return returnedValue;
+    }
+
+    s4527438_os_radio_set_cp(color_index,x_coordinate,y_coordinate);
+
+    return returnedValue;
+}
+
+static BaseType_t prvRadioOrbShow(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString ) {
+
+    long lParam_len;
+    const char *cCmd_string;
+    char *target_string = NULL;
+    uint8_t on_off_switch = RADIO_TYPE_ON;
+    // We always need to stop search further, even if the command is not correct
+    BaseType_t returnedValue = pdFALSE;
+
+    /* Get parameters 1 from command string */
+    cCmd_string = FreeRTOS_CLIGetParameter(pcCommandString, 1, &lParam_len);
+
+    if( strcmp(cCmd_string,"on") == 0 ) {
+        on_off_switch = RADIO_TYPE_ON;
+    } else if( strcmp(cCmd_string,"off") == 0 ) {
+        on_off_switch = RADIO_TYPE_OFF;
+    } else {
+        return returnedValue;
+    }
+    s4527438_os_radio_orb_show_rx_message(on_off_switch);
+
+    return returnedValue;
+}
+
+static BaseType_t prvRadioOrbOrbOnOff(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString ) {
+
+    long lParam_len;
+    const char *cCmd_string;
+    char *target_string = NULL;
+    uint8_t on_off_switch = RADIO_TYPE_ON;
+    // We always need to stop search further, even if the command is not correct
+    BaseType_t returnedValue = pdFALSE;
+
+    /* Get parameters 1 from command string */
+    cCmd_string = FreeRTOS_CLIGetParameter(pcCommandString, 1, &lParam_len);
+
+    if( strcmp(cCmd_string,"on") == 0 ) {
+        on_off_switch = RADIO_TYPE_ON;
+    } else if( strcmp(cCmd_string,"off") == 0 ) {
+        on_off_switch = RADIO_TYPE_OFF;
+    } else {
+        return returnedValue;
+    }
+    s4527438_os_radio_orb_on_off(on_off_switch);
+
+    return returnedValue;
+}
+
+static BaseType_t prvRadioOrbTestSendRAE(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString ) {
+
+    long lParam_len;
+    const char *cCmd_string;
+    char *target_string = NULL;
+    uint32_t x_coordinate = 0;
+    uint32_t y_coordinate = 0;
+    uint8_t  color_index = 0;
+    // We always need to stop search further, even if the command is not correct
+    BaseType_t returnedValue = pdFALSE;
+
+    /* Get parameters 1 from command string */
+    cCmd_string = FreeRTOS_CLIGetParameter(pcCommandString, 1, &lParam_len);
+
+    if( cCmd_string != NULL ) {
+        int i = 0;
+        uint8_t  *color_map[OBJ_COLOR_MAX + 1] = {"NO COLOR","red","green","blue","yellow","orange"};
+        uint8_t  color_string[9];
+
+        memset(color_string,0x00,sizeof(color_string));
+        memcpy(color_string,cCmd_string,lParam_len);
+
+        for( i = 0; i < (OBJ_COLOR_MAX + 1) ;i++) {
+            if( strcmp(color_string,color_map[i]) == 0) {
+                break;
+            }
+        }
+        if( i == (OBJ_COLOR_MAX + 1) ) {
+            color_index = 0;
+        } else {
+            color_index = i;
+        }
+    } else {
+        return returnedValue;
+    }
+
+    /* Get parameters 2 from command string */
+    cCmd_string = FreeRTOS_CLIGetParameter(pcCommandString, 2, &lParam_len);
+
+    if( cCmd_string != NULL ) {
+        int i = 0;
+        uint8_t numeric_string[4];
+
+        memset(numeric_string,0x00,sizeof(numeric_string));
+        for( i = 0; i < lParam_len ;i++) {
+            if( cCmd_string[i] < '0'
+                || cCmd_string[i] > '9' ) {
+                return returnedValue;
+            }
+            numeric_string[i] = cCmd_string[i];
+        }
+        x_coordinate = atoi(numeric_string);
+    } else {
+        return returnedValue;
+    }
+
+    /* Get parameters 3 from command string */
+    cCmd_string = FreeRTOS_CLIGetParameter(pcCommandString, 3, &lParam_len);
+
+    if( cCmd_string != NULL ) {
+        int i = 0;
+        uint8_t numeric_string[4];
+
+        memset(numeric_string,0x00,sizeof(numeric_string));
+        for( i = 0; i < lParam_len ;i++) {
+            if( cCmd_string[i] < '0'
+                || cCmd_string[i] > '9' ) {
+                return returnedValue;
+            }
+            numeric_string[i] = cCmd_string[i];
+        }
+        y_coordinate = atoi(numeric_string);
+    } else {
+        return returnedValue;
+    }
+
+    s4527438_os_radio_orb_test_send_RAE(color_index,x_coordinate,y_coordinate);
+
+    return returnedValue;
+}
 /***********************************************************************************************************/
 static BaseType_t prvRadioLoadSorter(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString ) {
 

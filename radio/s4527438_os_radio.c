@@ -24,6 +24,7 @@
 #include "semphr.h"
 
 #include "s4527438_hal_radio.h"
+#include "s4527438_os_atimer.h"
 #include "s4527438_os_radio.h"
 
 /* Private typedef -----------------------------------------------------------*/
@@ -46,6 +47,11 @@ typedef enum{
     MESSAGE_GET_RXADDR,
     MESSAGE_JOIN,
 
+    MESSAGE_ORB_CP_CMD,
+    MESSAGE_ORB_SHOW_CMD,
+    MESSAGE_ORB_ON_OFF_CMD,
+    MESSAGE_ORB_TEST_SEND_RAE_COLOR_AND_COORDINATE,
+
     MESSAGE_LOAD_SORTER,
     MESSAGE_LOAD_ORB,
 } Message_Type_Enum;
@@ -57,20 +63,31 @@ typedef enum{
 } Sorter_Status_Type_Enum;
 
 typedef struct{
+    uint8_t     color;
+    uint32_t    x_coordinate;
+    uint32_t    y_coordinate;
+}Obj_Color_Cp_Coordinate_Map_type;
+
+typedef struct{
     Sorter_Status_Type_Enum status;
     uint32_t    x_coordinate;
     uint32_t    y_coordinate;
     uint32_t    z_coordinate;
+    uint8_t     color;
     
     uint8_t     channel;
     uint8_t     tx_addr[RADIO_HAL_TX_RX_ADDR_STRING_WIDTH + 1];
     uint8_t     rx_addr[RADIO_HAL_TX_RX_ADDR_STRING_WIDTH + 1];
+
+    Obj_Color_Cp_Coordinate_Map_type color_map[OBJ_COLOR_MAX];
 }Sorter_handler_Type;
 
 typedef struct{
     uint8_t     channel;
     uint8_t     tx_addr[RADIO_HAL_TX_RX_ADDR_STRING_WIDTH + 1];
     uint8_t     rx_addr[RADIO_HAL_TX_RX_ADDR_STRING_WIDTH + 1];
+    uint8_t     is_display_message;
+    uint8_t     is_switch;
 }ORB_handler_Type;
 
 struct Message {    /* Message consists of sequence number and payload string */
@@ -79,6 +96,9 @@ struct Message {    /* Message consists of sequence number and payload string */
     uint32_t    x_coordinate;
     uint32_t    y_coordinate;
     uint32_t    z_coordinate;
+    uint8_t     color;
+    uint8_t     is_display_message;
+    uint8_t     is_switch;
 
     uint8_t     select_index;
     uint8_t     channel;
@@ -141,6 +161,7 @@ typedef struct {
 #define RADIO_RX_RETRY_COUNT_DELAY          20
 
 #define QUEUE_LENGTH                        50
+
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
 static TaskHandle_t xTaskRadioOsHandle;
@@ -297,6 +318,54 @@ void s4527438_os_radio_get_rxaddr(void) {
     }
 }
 
+/***********************************************************************************************************/
+void s4527438_os_radio_set_cp(uint8_t color,uint32_t x_coordinate, uint32_t y_coordinate) {
+    struct Message SendMessage;
+
+    SendMessage.MessageType = MESSAGE_ORB_CP_CMD;
+    SendMessage.color = color;
+    SendMessage.x_coordinate = x_coordinate;
+    SendMessage.y_coordinate = y_coordinate;
+
+    if (s4527438QueueSorterPacketSend != NULL) { /* Check if queue exists */
+        xQueueSend(s4527438QueueSorterPacketSend, ( void * ) &SendMessage, ( portTickType ) 0 );
+    }
+}
+
+void s4527438_os_radio_orb_show_rx_message(uint8_t is_display_message) {
+    struct Message SendMessage;
+
+    SendMessage.MessageType = MESSAGE_ORB_SHOW_CMD;
+    SendMessage.is_display_message = is_display_message;
+
+    if (s4527438QueueSorterPacketSend != NULL) { /* Check if queue exists */
+        xQueueSend(s4527438QueueSorterPacketSend, ( void * ) &SendMessage, ( portTickType ) 0 );
+    }
+}
+
+void s4527438_os_radio_orb_on_off(uint8_t is_switch) {
+    struct Message SendMessage;
+
+    SendMessage.MessageType = MESSAGE_ORB_ON_OFF_CMD;
+    SendMessage.is_switch = is_switch;
+
+    if (s4527438QueueSorterPacketSend != NULL) { /* Check if queue exists */
+        xQueueSend(s4527438QueueSorterPacketSend, ( void * ) &SendMessage, ( portTickType ) 0 );
+    }
+}
+
+void s4527438_os_radio_orb_test_send_RAE(uint8_t color,uint32_t x_coordinate, uint32_t y_coordinate) {
+    struct Message SendMessage;
+
+    SendMessage.MessageType = MESSAGE_ORB_TEST_SEND_RAE_COLOR_AND_COORDINATE;
+    SendMessage.color = color;
+    SendMessage.x_coordinate = x_coordinate;
+    SendMessage.y_coordinate = y_coordinate;
+
+    if (s4527438QueueSorterPacketSend != NULL) { /* Check if queue exists */
+        xQueueSend(s4527438QueueSorterPacketSend, ( void * ) &SendMessage, ( portTickType ) 0 );
+    }
+}
 /***********************************************************************************************************/
 void s4527438_os_radio_send_join_packet(void) {
     struct Message SendMessage;
@@ -625,6 +694,37 @@ static void RadioTask( void ) {
                 case MESSAGE_JOIN:
                     break;
                 /***********************************************************************************************************/
+                case MESSAGE_ORB_CP_CMD:
+                    if( RecvMessage.color >= 0 && RecvMessage.color <= OBJ_COLOR_MAX ) {
+                        Obj_Color_Cp_Coordinate_Map_type *color_map = NULL;
+                        color_map = &(sorter_handler.color_map[RecvMessage.color]);
+
+                        color_map->x_coordinate = RecvMessage.x_coordinate;
+                        color_map->y_coordinate = RecvMessage.y_coordinate;
+	                    debug_printf("[set cp]: color = <%d> , x_coordinate = <%d> , y_coordinate = <%d>\r\n",RecvMessage.color,sorter_handler.color_map[RecvMessage.color].x_coordinate,sorter_handler.color_map[RecvMessage.color].y_coordinate);
+                    }
+                    break;
+                case MESSAGE_ORB_SHOW_CMD:
+                    orb_handler.is_display_message = RecvMessage.is_display_message;
+	                debug_printf("[orb show on/off]: <%d>\r\n",orb_handler.is_display_message);
+                    break;
+                case MESSAGE_ORB_ON_OFF_CMD:
+                    orb_handler.is_switch = RecvMessage.is_switch;
+	                debug_printf("[orb on/off]: <%d>\r\n",orb_handler.is_switch);
+                    break;
+                case MESSAGE_ORB_TEST_SEND_RAE_COLOR_AND_COORDINATE:
+                    if( RecvMessage.color >= 0 && RecvMessage.color <= OBJ_COLOR_MAX ) {
+                        s4527438_os_radio_send_xyz_packet(RecvMessage.x_coordinate, RecvMessage.y_coordinate, 200);
+                        s4527438_os_radio_send_vacuum_packet(VACUUM_ON);
+                        s4527438_os_radio_send_xyz_packet(RecvMessage.x_coordinate, RecvMessage.y_coordinate, 0);
+                        s4527438_os_radio_send_xyz_packet(sorter_handler.color_map[RecvMessage.color].x_coordinate, sorter_handler.color_map[RecvMessage.color].y_coordinate, 200);
+                        s4527438_os_radio_send_vacuum_packet(VACUUM_OFF);
+                        s4527438_os_radio_send_xyz_packet(sorter_handler.color_map[RecvMessage.color].x_coordinate, sorter_handler.color_map[RecvMessage.color].y_coordinate, 0);
+
+	                    debug_printf("[Enter send RAE]\r\n");
+                    }
+                    break;
+                /***********************************************************************************************************/
                 case MESSAGE_TX_XYZ_TYPE:
                     while(1){
                         s4527438_hal_radio_fsmprocessing();
@@ -836,6 +936,35 @@ static void RadioTask( void ) {
 	                        if( s4527438_hal_radio_getrxstatus() == RX_STATUS_PACKET_RECEIVED ) {
                                 s4527438_hal_radio_getpacket(rx_buffer);
                                 radio_RAE_parser(rx_buffer,&parsed_RAE);
+
+                                if( orb_handler.is_switch == RADIO_TYPE_ON ) {
+                                    if( parsed_RAE.color >= 0 && parsed_RAE.color <= OBJ_COLOR_MAX ) {
+                                        s4527438_os_radio_send_xyz_packet(parsed_RAE.x_coordinate, parsed_RAE.y_coordinate, 200);
+                                        s4527438_os_radio_send_vacuum_packet(VACUUM_ON);
+                                        s4527438_os_radio_send_xyz_packet(parsed_RAE.x_coordinate, parsed_RAE.y_coordinate, 0);
+                                        s4527438_os_radio_send_xyz_packet(sorter_handler.color_map[parsed_RAE.color].x_coordinate, sorter_handler.color_map[parsed_RAE.color].y_coordinate, 200);
+                                        s4527438_os_radio_send_vacuum_packet(VACUUM_OFF);
+                                        s4527438_os_radio_send_xyz_packet(sorter_handler.color_map[parsed_RAE.color].x_coordinate, sorter_handler.color_map[parsed_RAE.color].y_coordinate, 0);
+                                    }
+                                }
+
+                                if( orb_handler.is_display_message == RADIO_TYPE_ON ) {
+                                    char    *color_map[OBJ_COLOR_MAX + 1] = {"NO COLOR","RED","GREEN","BLUE","YELLO","ORANGE"};
+                                    char    color_string[9];
+                                    uint32_t    cur_time_ms = s4527438_os_atimer_read_ms();
+
+                                    if( parsed_RAE.color >= 0 && parsed_RAE.color <= OBJ_COLOR_MAX ) {
+                                        strcpy(color_string,color_map[parsed_RAE.color]);
+                                    }
+
+                                    debug_printf("[%d(ms)][color:%s][x_coordinate:%d][y_coordinate:%d] \r\n",   
+                                                                                                    cur_time_ms,
+                                                                                                    color_string,
+                                                                                                    parsed_RAE.x_coordinate,
+                                                                                                    parsed_RAE.y_coordinate
+                                                                                                    );
+                                }
+#ifdef DEBUG
                                 debug_printf("RAE ID : %d , X : %d , Y : %d , width : %d , height : %d , color : %d \r\n",parsed_RAE.ID,
                                                                                                                           parsed_RAE.x_coordinate,
                                                                                                                           parsed_RAE.y_coordinate,
@@ -843,6 +972,7 @@ static void RadioTask( void ) {
                                                                                                                           parsed_RAE.height,
                                                                                                                           parsed_RAE.color
                                                                                                                           );
+#endif
                                 break;
                             }
                             vTaskDelay(RADIO_RX_RETRY_COUNT_DELAY);
@@ -863,7 +993,9 @@ static void RadioTask( void ) {
 
 static void ORBReceiverTask( void ) {
     for(;;){
-        radio_orb_send_rx_event();
+        if( orb_handler.is_switch == RADIO_TYPE_ON ) {
+            radio_orb_send_rx_event();
+        }
         vTaskDelay(100);
     }
 }
