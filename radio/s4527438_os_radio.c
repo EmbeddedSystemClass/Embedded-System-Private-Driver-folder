@@ -566,20 +566,27 @@ static void RadioTask( void ) {
 
             switch(RecvMessage.MessageType) {
                 case MESSAGE_SET_CHAN:
+                    while(1){
+                        s4527438_hal_radio_fsmprocessing();
+                        if(s4527438_hal_radio_get_current_fsm_state() == S4527438_RADIO_IDLE_STATE ){
+                            break;
+                        }
+                        vTaskDelay(RADIO_RX_RETRY_COUNT_DELAY);
+                    }
 	                s4527438_hal_radio_setchan(RecvMessage.channel);
                     break;
                 case MESSAGE_GET_CHAN:
                     {
 	                    uint8_t current_channel;
 	                    current_channel = s4527438_hal_radio_getchan();
-	                    debug_printf("[Current channel]: <%d>\n\r", current_channel);
+                        debug_printf("[Current channel]: <%d>\n\r", current_channel);
                     }
                     break;
                 case MESSAGE_SET_TXADDR:
 	                s4527438_hal_radio_settxaddress(RecvMessage.tx_addr);
                     break;
                 case MESSAGE_SET_RXADDR:
-	                s4527438_hal_radio_settxaddress(RecvMessage.rx_addr);
+	                s4527438_hal_radio_setrxaddress(RecvMessage.rx_addr);
                     break;
                 case MESSAGE_GET_TXADDR:
                     {
@@ -642,6 +649,7 @@ static void RadioTask( void ) {
 	                        if( s4527438_hal_radio_getrxstatus() == RX_STATUS_PACKET_RECEIVED ) {
                                 s4527438_hal_radio_getpacket(rx_buffer);
                                 if( strcmp(&(rx_buffer[RADIO_HAL_HEADER_WIDTH]),"A C K") == 0 ) {
+                                    debug_printf("Received: A C K\n\r");
                                     break;
                                 }
                             }
@@ -674,6 +682,7 @@ static void RadioTask( void ) {
                                 s4527438_hal_radio_getpacket(rx_buffer);
                                 if( strcmp(&(rx_buffer[RADIO_HAL_HEADER_WIDTH]),"A C K") == 0 ) {
                                     sorter_handler.status = IDLE;
+                                    debug_printf("Received: A C K\n\r");
                                     break;
                                 }
                             }
@@ -706,6 +715,7 @@ static void RadioTask( void ) {
 	                        if( s4527438_hal_radio_getrxstatus() == RX_STATUS_PACKET_RECEIVED ) {
                                 s4527438_hal_radio_getpacket(rx_buffer);
                                 if( strcmp(&(rx_buffer[RADIO_HAL_HEADER_WIDTH]),"A C K") == 0 ) {
+                                    debug_printf("Received: A C K\n\r");
                                     break;
                                 }
                             }
