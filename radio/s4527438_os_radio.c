@@ -476,6 +476,7 @@ void s4527438_os_radio_send_vacuum_packet(Message_Vacuum_Action_Enum vacuum_acti
     }
 
     SendMessage.MessageType = MESSAGE_RX_VACUUM_REPLY_TYPE;
+    SendMessage.vacuum_action = vacuum_action;
 
     if (s4527438QueueSorterPacketSend != NULL) { /* Check if queue exists */
         xQueueSend(s4527438QueueSorterPacketSend, ( void * ) &SendMessage, ( portTickType ) 0 );
@@ -797,6 +798,7 @@ static void RadioTask( void ) {
                 case MESSAGE_RX_XYZ_REPLY_TYPE:
                     s4527438_hal_radio_setfsmrx();
                     {
+                        uint8_t need_retrasmit = 0;
                         uint8_t rx_buffer[RADIO_HAL_TOTAL_PACKET_WIDTH];
                         memset(rx_buffer,0x00,sizeof(rx_buffer));
                         for(i = 0;i < RADIO_RX_RETRY_COUNT;i++){
@@ -810,9 +812,27 @@ static void RadioTask( void ) {
                                     sorter_handler.z_coordinate = RecvMessage.z_coordinate;
                                     debug_printf("Received: A C K\n\r");
                                     break;
+                                }else if( strcmp(&(rx_buffer[RADIO_HAL_HEADER_WIDTH]),"N A C K") == 0 ) {
+                                    need_retrasmit = 1;
                                 }
                             } else if( s4527438_hal_radio_getrxstatus() == RX_STATUS_PACKET_DECODE_ERROR ) {
                                 debug_printf("[H ERROR][2-bit error]\n\r");
+                                need_retrasmit = 1;
+                            }
+
+                            if( need_retrasmit ) {
+                                while(1){
+                                    s4527438_hal_radio_fsmprocessing();
+                                    if(s4527438_hal_radio_get_current_fsm_state() == S4527438_RADIO_IDLE_STATE ){
+                                        break;
+                                    }
+                                    vTaskDelay(RADIO_RX_RETRY_COUNT_DELAY);
+                                }
+                                configure_sorter_tx_setting();
+                                snprintf(tx_string,sizeof(tx_string),"XYZ%03d%03d%02d",RecvMessage.x_coordinate,RecvMessage.y_coordinate,RecvMessage.z_coordinate);
+                                s4527438_hal_radio_sendpacket(0,sorter_handler.tx_addr,tx_string);
+
+                                process_hal_fsm_after_packets_sent();
                             }
                             vTaskDelay(RADIO_RX_RETRY_COUNT_DELAY);
                         }
@@ -835,6 +855,7 @@ static void RadioTask( void ) {
                     s4527438_hal_radio_setfsmrx();
 
                     {
+                        uint8_t need_retrasmit = 0;
                         uint8_t rx_buffer[RADIO_HAL_TOTAL_PACKET_WIDTH];
                         memset(rx_buffer,0x00,sizeof(rx_buffer));
                         for(i = 0;i < RADIO_RX_RETRY_COUNT;i++){
@@ -845,9 +866,26 @@ static void RadioTask( void ) {
                                     sorter_handler.status = IDLE;
                                     debug_printf("Received: A C K\n\r");
                                     break;
+                                }else if( strcmp(&(rx_buffer[RADIO_HAL_HEADER_WIDTH]),"N A C K") == 0 ) {
+                                    need_retrasmit = 1;
                                 }
                             } else if( s4527438_hal_radio_getrxstatus() == RX_STATUS_PACKET_DECODE_ERROR ) {
                                 debug_printf("[H ERROR][2-bit error]\n\r");
+                                need_retrasmit = 1;
+                            }
+
+                            if( need_retrasmit ) {
+                                while(1){
+                                    s4527438_hal_radio_fsmprocessing();
+                                    if(s4527438_hal_radio_get_current_fsm_state() == S4527438_RADIO_IDLE_STATE ){
+                                        break;
+                                    }
+                                    vTaskDelay(RADIO_RX_RETRY_COUNT_DELAY);
+                                }
+                                configure_sorter_tx_setting();
+                                s4527438_hal_radio_sendpacket(0,sorter_handler.tx_addr,"JOIN");
+
+                                process_hal_fsm_after_packets_sent();
                             }
                             vTaskDelay(RADIO_RX_RETRY_COUNT_DELAY);
                         }
@@ -871,6 +909,7 @@ static void RadioTask( void ) {
                     break;
                 case MESSAGE_RX_VACUUM_REPLY_TYPE:
                     {
+                        uint8_t need_retrasmit = 0;
                         uint8_t rx_buffer[RADIO_HAL_TOTAL_PACKET_WIDTH];
                         memset(rx_buffer,0x00,sizeof(rx_buffer));
                         for(i = 0;i < RADIO_RX_RETRY_COUNT;i++){
@@ -880,9 +919,30 @@ static void RadioTask( void ) {
                                 if( strcmp(&(rx_buffer[RADIO_HAL_HEADER_WIDTH]),"A C K") == 0 ) {
                                     debug_printf("Received: A C K\n\r");
                                     break;
+                                }else if( strcmp(&(rx_buffer[RADIO_HAL_HEADER_WIDTH]),"N A C K") == 0 ) {
+                                    need_retrasmit = 1;
                                 }
                             } else if( s4527438_hal_radio_getrxstatus() == RX_STATUS_PACKET_DECODE_ERROR ) {
                                 debug_printf("[H ERROR][2-bit error]\n\r");
+                                need_retrasmit = 1;
+                            }
+
+                            if( need_retrasmit ) {
+                                while(1){
+                                    s4527438_hal_radio_fsmprocessing();
+                                    if(s4527438_hal_radio_get_current_fsm_state() == S4527438_RADIO_IDLE_STATE ){
+                                        break;
+                                    }
+                                    vTaskDelay(RADIO_RX_RETRY_COUNT_DELAY);
+                                }
+                                configure_sorter_tx_setting();
+                                if(RecvMessage.vacuum_action == VACUUM_ON) {
+                                    s4527438_hal_radio_sendpacket(0,sorter_handler.tx_addr,"VON");
+                                } else if( RecvMessage.vacuum_action == VACUUM_OFF ) {
+                                    s4527438_hal_radio_sendpacket(0,sorter_handler.tx_addr,"VOFF");
+                                }
+
+                                process_hal_fsm_after_packets_sent();
                             }
                             vTaskDelay(RADIO_RX_RETRY_COUNT_DELAY);
                         }
