@@ -841,6 +841,8 @@ static void RadioTask( void ) {
                                     break;
                                 }else if( strcmp(&(rx_buffer[RADIO_HAL_HEADER_WIDTH]),"N A C K") == 0 ) {
                                     need_retrasmit = 1;
+                                }else if( strcmp(&(rx_buffer[RADIO_HAL_HEADER_WIDTH]),"E R R") == 0 ) {
+                                    need_retrasmit = 1;
                                 }
                             } else if( s4527438_hal_radio_getrxstatus() == RX_STATUS_PACKET_DECODE_ERROR ) {
                                 debug_printf("[H ERROR][2-bit error]\n\r");
@@ -895,6 +897,8 @@ static void RadioTask( void ) {
                                     break;
                                 }else if( strcmp(&(rx_buffer[RADIO_HAL_HEADER_WIDTH]),"N A C K") == 0 ) {
                                     need_retrasmit = 1;
+                                }else if( strcmp(&(rx_buffer[RADIO_HAL_HEADER_WIDTH]),"E R R") == 0 ) {
+                                    need_retrasmit = 1;
                                 }
                             } else if( s4527438_hal_radio_getrxstatus() == RX_STATUS_PACKET_DECODE_ERROR ) {
                                 debug_printf("[H ERROR][2-bit error]\n\r");
@@ -947,6 +951,8 @@ static void RadioTask( void ) {
                                     debug_printf("Received: A C K\n\r");
                                     break;
                                 }else if( strcmp(&(rx_buffer[RADIO_HAL_HEADER_WIDTH]),"N A C K") == 0 ) {
+                                    need_retrasmit = 1;
+                                }else if( strcmp(&(rx_buffer[RADIO_HAL_HEADER_WIDTH]),"E R R") == 0 ) {
                                     need_retrasmit = 1;
                                 }
                             } else if( s4527438_hal_radio_getrxstatus() == RX_STATUS_PACKET_DECODE_ERROR ) {
