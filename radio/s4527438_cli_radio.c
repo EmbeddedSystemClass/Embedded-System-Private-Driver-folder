@@ -505,6 +505,7 @@ static BaseType_t prvRadioHeadDebugLowerValue(char *pcWriteBuffer, size_t xWrite
     }
 
     sorter_z_max_value = head_lower_val;
+    s4527438_os_radio_head_debug_set_max_lower_val(head_lower_val);
     debug_printf("[Current channel]: <%d>\n\r", sorter_z_max_value);
     return returnedValue;
 }

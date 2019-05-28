@@ -38,6 +38,7 @@ void s4527438_os_radio_send_xyz_packet(uint32_t x_coordinate, uint32_t y_coordin
 void s4527438_os_radio_move_only_xy(uint32_t x_coordinate, uint32_t y_coordinate);
 void s4527438_os_radio_move_only_z(uint32_t z_coordinate);
 void s4527438_os_radio_send_vacuum_packet(Message_Vacuum_Action_Enum vacuum_action);
+void s4527438_os_radio_head_debug_set_max_lower_val(uint8_t headMaxVal);
 
 void s4527438_os_radio_load_sorter_setting(uint32_t sorter_index);
 void s4527438_os_radio_load_orb_setting(uint8_t orb_index);

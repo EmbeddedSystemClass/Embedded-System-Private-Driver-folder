@@ -175,6 +175,7 @@ static QueueSetHandle_t xQueueSet;
 
 static Sorter_handler_Type sorter_handler;
 static ORB_handler_Type orb_handler;
+static uint8_t sorter_z_max_value = 99;
 /* Private function prototypes -----------------------------------------------*/
 static void RadioTask( void );
 static void ORBReceiverTask( void );
@@ -498,6 +499,9 @@ void s4527438_os_radio_send_vacuum_packet(Message_Vacuum_Action_Enum vacuum_acti
     }
 }
 
+void s4527438_os_radio_head_debug_set_max_lower_val(uint8_t headMaxVal) {
+    sorter_z_max_value = headMaxVal;
+}
 /***********************************************************************************************************/
 void s4527438_os_radio_load_sorter_setting(uint32_t sorter_index) {
     struct Message SendMessage;
@@ -789,10 +793,10 @@ static void RadioTask( void ) {
                     break;
                 case MESSAGE_ORB_TEST_SEND_RAE_COLOR_AND_COORDINATE:
                     if( RecvMessage.color >= 0 && RecvMessage.color <= OBJ_COLOR_MAX ) {
-                        s4527438_os_radio_send_xyz_packet(RecvMessage.x_coordinate, RecvMessage.y_coordinate, 200);
+                        s4527438_os_radio_send_xyz_packet(RecvMessage.x_coordinate, RecvMessage.y_coordinate, sorter_z_max_value);
                         s4527438_os_radio_send_vacuum_packet(VACUUM_ON);
                         s4527438_os_radio_send_xyz_packet(RecvMessage.x_coordinate, RecvMessage.y_coordinate, 0);
-                        s4527438_os_radio_send_xyz_packet(sorter_handler.color_map[RecvMessage.color].x_coordinate, sorter_handler.color_map[RecvMessage.color].y_coordinate, 200);
+                        s4527438_os_radio_send_xyz_packet(sorter_handler.color_map[RecvMessage.color].x_coordinate, sorter_handler.color_map[RecvMessage.color].y_coordinate, sorter_z_max_value);
                         s4527438_os_radio_send_vacuum_packet(VACUUM_OFF);
                         s4527438_os_radio_send_xyz_packet(sorter_handler.color_map[RecvMessage.color].x_coordinate, sorter_handler.color_map[RecvMessage.color].y_coordinate, 0);
 
@@ -1089,10 +1093,10 @@ static void RadioTask( void ) {
 
                                 if( orb_handler.is_switch == RADIO_TYPE_ON ) {
                                     if( parsed_RAE.color >= 0 && parsed_RAE.color <= OBJ_COLOR_MAX ) {
-                                        s4527438_os_radio_send_xyz_packet(parsed_RAE.x_coordinate, parsed_RAE.y_coordinate, 200);
+                                        s4527438_os_radio_send_xyz_packet(parsed_RAE.x_coordinate, parsed_RAE.y_coordinate, sorter_z_max_value);
                                         s4527438_os_radio_send_vacuum_packet(VACUUM_ON);
                                         s4527438_os_radio_send_xyz_packet(parsed_RAE.x_coordinate, parsed_RAE.y_coordinate, 0);
-                                        s4527438_os_radio_send_xyz_packet(sorter_handler.color_map[parsed_RAE.color].x_coordinate, sorter_handler.color_map[parsed_RAE.color].y_coordinate, 200);
+                                        s4527438_os_radio_send_xyz_packet(sorter_handler.color_map[parsed_RAE.color].x_coordinate, sorter_handler.color_map[parsed_RAE.color].y_coordinate, sorter_z_max_value);
                                         s4527438_os_radio_send_vacuum_packet(VACUUM_OFF);
                                         s4527438_os_radio_send_xyz_packet(sorter_handler.color_map[parsed_RAE.color].x_coordinate, sorter_handler.color_map[parsed_RAE.color].y_coordinate, 0);
                                     }
