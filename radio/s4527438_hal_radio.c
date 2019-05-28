@@ -479,6 +479,7 @@ static void WAITING_STATE_state_handle_fsm_process(void) {
             debug_printf("%02x ", rxBuffer[i]);
         }
 #endif
+        i = NO_ENCODE_WIDTH;
         memset(decoded_buffer,0x00,sizeof(decoded_buffer));
         for (j = 0; i < RADIO_HAL_TOTAL_PACKET_WIDTH; i+=2,j++) {
             s4527438_lib_hamming_byte_decoder(&(rxBuffer[i]),&(decoded_buffer[j]));
