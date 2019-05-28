@@ -35,6 +35,7 @@
 
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
+static uint8_t sorter_z_max_value = Z_MAX_VALUE;
 /* Private function prototypes -----------------------------------------------*/
 void s4527438_cli_radio_init(void);
 
@@ -50,6 +51,7 @@ static BaseType_t prvRadioOriginCommand(char *pcWriteBuffer, size_t xWriteBuffer
 static BaseType_t prvRadioMoveCommand(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString );
 static BaseType_t prvRadioHeadCommand(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString );
 static BaseType_t prvRadioVacuumCommand(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString );
+static BaseType_t prvRadioHeadDebugLowerValue(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString );
 
 static BaseType_t prvRadioOrbSetCp(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString );
 static BaseType_t prvRadioOrbShow(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString );
@@ -85,6 +87,13 @@ CLI_Command_Definition_t xRadioVacuum = {  /* Structure that defines the "pan" c
     "vacuum",
     "vacuum: vacuum <on|off> \r\n",
     prvRadioVacuumCommand,
+    1
+};
+
+CLI_Command_Definition_t xRadioHeadDebugLowerValue = {  /* Structure that defines the "pan" command line command. */
+    "headlowerval",
+    "headlowerval: headlowerval <1 ~ 99(mm)> \r\n",
+    prvRadioHeadDebugLowerValue,
     1
 };
 
@@ -206,6 +215,7 @@ void s4527438_cli_radio_init(void) {
     FreeRTOS_CLIRegisterCommand(&xRadioMove);
     FreeRTOS_CLIRegisterCommand(&xRadioHead);
     FreeRTOS_CLIRegisterCommand(&xRadioVacuum);
+    FreeRTOS_CLIRegisterCommand(&xRadioHeadDebugLowerValue);
 
     /* Register CLI commands */
     FreeRTOS_CLIRegisterCommand(&xRadioLoadSorter);
@@ -431,7 +441,7 @@ static BaseType_t prvRadioHeadCommand(char *pcWriteBuffer, size_t xWriteBufferLe
     if( strcmp(cCmd_string,"raise") == 0 ) {
         z_coordinate = 0;
     } else if( strcmp(cCmd_string,"lower") == 0 ) {
-        z_coordinate = Z_MAX_VALUE;
+        z_coordinate = sorter_z_max_value;
     } else {
         return returnedValue;
     }
@@ -465,6 +475,39 @@ static BaseType_t prvRadioVacuumCommand(char *pcWriteBuffer, size_t xWriteBuffer
     return returnedValue;
 }
 
+static BaseType_t prvRadioHeadDebugLowerValue(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString ) {
+
+    long lParam_len;
+    const char *cCmd_string;
+    char *target_string = NULL;
+    uint8_t head_lower_val = 0;
+    // We always need to stop search further, even if the command is not correct
+    BaseType_t returnedValue = pdFALSE;
+
+    /* Get parameters 1 from command string */
+    cCmd_string = FreeRTOS_CLIGetParameter(pcCommandString, 1, &lParam_len);
+
+    if( cCmd_string != NULL ) {
+        int i = 0;
+        uint8_t numeric_string[4];
+
+        memset(numeric_string,0x00,sizeof(numeric_string));
+        for( i = 0; i < lParam_len ;i++) {
+            if( cCmd_string[i] < '0'
+                || cCmd_string[i] > '9' ) {
+                return returnedValue;
+            }
+            numeric_string[i] = cCmd_string[i];
+        }
+        head_lower_val = atoi(numeric_string);
+    } else {
+        return returnedValue;
+    }
+
+    sorter_z_max_value = head_lower_val;
+    debug_printf("[Current channel]: <%d>\n\r", sorter_z_max_value);
+    return returnedValue;
+}
 /***********************************************************************************************************/
 static BaseType_t prvRadioOrbSetCp(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString ) {
 
