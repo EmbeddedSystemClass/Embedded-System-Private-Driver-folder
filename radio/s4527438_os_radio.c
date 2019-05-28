@@ -400,6 +400,61 @@ void s4527438_os_radio_send_xyz_packet(uint32_t x_coordinate, uint32_t y_coordin
     }
 
     SendMessage.MessageType = MESSAGE_RX_XYZ_REPLY_TYPE;
+    SendMessage.x_coordinate = x_coordinate;
+    SendMessage.y_coordinate = y_coordinate;
+    SendMessage.z_coordinate = z_coordinate;
+
+    if (s4527438QueueSorterPacketSend != NULL) { /* Check if queue exists */
+        xQueueSend(s4527438QueueSorterPacketSend, ( void * ) &SendMessage, ( portTickType ) 0 );
+    }
+}
+
+void s4527438_os_radio_move_only_xy(uint32_t x_coordinate, uint32_t y_coordinate) {
+    struct Message SendMessage;
+
+    if( sorter_handler.status == NOT_REGISTERED ) {
+        s4527438_os_radio_send_join_packet();
+    }
+
+    SendMessage.MessageType = MESSAGE_TX_XYZ_TYPE;
+    SendMessage.x_coordinate = x_coordinate;
+    SendMessage.y_coordinate = y_coordinate;
+    SendMessage.z_coordinate = sorter_handler.z_coordinate;
+
+    if (s4527438QueueSorterPacketSend != NULL) { /* Check if queue exists */
+        xQueueSend(s4527438QueueSorterPacketSend, ( void * ) &SendMessage, ( portTickType ) 0 );
+    }
+
+    SendMessage.MessageType = MESSAGE_RX_XYZ_REPLY_TYPE;
+    SendMessage.x_coordinate = x_coordinate;
+    SendMessage.y_coordinate = y_coordinate;
+    SendMessage.z_coordinate = sorter_handler.z_coordinate;
+
+    if (s4527438QueueSorterPacketSend != NULL) { /* Check if queue exists */
+        xQueueSend(s4527438QueueSorterPacketSend, ( void * ) &SendMessage, ( portTickType ) 0 );
+    }
+}
+
+void s4527438_os_radio_move_only_z(uint32_t z_coordinate) {
+    struct Message SendMessage;
+
+    if( sorter_handler.status == NOT_REGISTERED ) {
+        s4527438_os_radio_send_join_packet();
+    }
+
+    SendMessage.MessageType = MESSAGE_TX_XYZ_TYPE;
+    SendMessage.x_coordinate = sorter_handler.x_coordinate;
+    SendMessage.y_coordinate = sorter_handler.y_coordinate;
+    SendMessage.z_coordinate = z_coordinate;
+
+    if (s4527438QueueSorterPacketSend != NULL) { /* Check if queue exists */
+        xQueueSend(s4527438QueueSorterPacketSend, ( void * ) &SendMessage, ( portTickType ) 0 );
+    }
+
+    SendMessage.MessageType = MESSAGE_RX_XYZ_REPLY_TYPE;
+    SendMessage.x_coordinate = sorter_handler.x_coordinate;
+    SendMessage.y_coordinate = sorter_handler.y_coordinate;
+    SendMessage.z_coordinate = z_coordinate;
 
     if (s4527438QueueSorterPacketSend != NULL) { /* Check if queue exists */
         xQueueSend(s4527438QueueSorterPacketSend, ( void * ) &SendMessage, ( portTickType ) 0 );
@@ -749,6 +804,10 @@ static void RadioTask( void ) {
 	                        if( s4527438_hal_radio_getrxstatus() == RX_STATUS_PACKET_RECEIVED ) {
                                 s4527438_hal_radio_getpacket(rx_buffer);
                                 if( strcmp(&(rx_buffer[RADIO_HAL_HEADER_WIDTH]),"A C K") == 0 ) {
+                                    // Only Update Location when receive ACK
+                                    sorter_handler.x_coordinate = RecvMessage.x_coordinate;
+                                    sorter_handler.y_coordinate = RecvMessage.y_coordinate;
+                                    sorter_handler.z_coordinate = RecvMessage.z_coordinate;
                                     debug_printf("Received: A C K\n\r");
                                     break;
                                 }

@@ -31,13 +31,10 @@
 /* Private define ------------------------------------------------------------*/
 #define X_MAX_VALUE     319
 #define Y_MAX_VALUE     319
-#define Z_MAX_VALUE     199
+#define Z_MAX_VALUE     99
 
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
-static uint32_t current_x_value = 0;
-static uint32_t current_y_value = 0;
-static uint32_t current_z_value = 0;
 /* Private function prototypes -----------------------------------------------*/
 void s4527438_cli_radio_init(void);
 
@@ -363,7 +360,6 @@ static BaseType_t prvRadioMoveCommand(char *pcWriteBuffer, size_t xWriteBufferLe
     char *target_string = NULL;
     uint32_t x_coordinate = 0;
     uint32_t y_coordinate = 0;
-    uint32_t z_coordinate = current_z_value;
     // We always need to stop search further, even if the command is not correct
     BaseType_t returnedValue = pdFALSE;
 
@@ -407,10 +403,7 @@ static BaseType_t prvRadioMoveCommand(char *pcWriteBuffer, size_t xWriteBufferLe
         return returnedValue;
     }
 
-    current_x_value = x_coordinate;
-    current_y_value = y_coordinate;
-    current_z_value = z_coordinate;
-    s4527438_os_radio_send_xyz_packet(current_x_value, current_y_value, current_z_value);
+    s4527438_os_radio_move_only_xy(x_coordinate, y_coordinate);
 
     return returnedValue;
 }
@@ -420,8 +413,6 @@ static BaseType_t prvRadioHeadCommand(char *pcWriteBuffer, size_t xWriteBufferLe
     long lParam_len;
     const char *cCmd_string;
     char *target_string = NULL;
-    uint32_t x_coordinate = current_x_value;
-    uint32_t y_coordinate = current_y_value;
     uint32_t z_coordinate = 0;
     // We always need to stop search further, even if the command is not correct
     BaseType_t returnedValue = pdFALSE;
@@ -430,18 +421,14 @@ static BaseType_t prvRadioHeadCommand(char *pcWriteBuffer, size_t xWriteBufferLe
     cCmd_string = FreeRTOS_CLIGetParameter(pcCommandString, 1, &lParam_len);
 
     if( strcmp(cCmd_string,"raise") == 0 ) {
-        current_x_value = x_coordinate;
-        current_y_value = y_coordinate;
-        current_z_value = 0;
+        z_coordinate = 0;
     } else if( strcmp(cCmd_string,"lower") == 0 ) {
-        current_x_value = x_coordinate;
-        current_y_value = y_coordinate;
-        current_z_value = Z_MAX_VALUE;
+        z_coordinate = Z_MAX_VALUE;
     } else {
         return returnedValue;
     }
 
-    s4527438_os_radio_send_xyz_packet(current_x_value, current_y_value, current_z_value);
+    s4527438_os_radio_move_only_z(z_coordinate);
 
     return returnedValue;
 }

@@ -34,6 +34,8 @@ void s4527438_os_radio_orb_test_send_RAE(uint8_t color,uint32_t x_coordinate, ui
 void s4527438_os_radio_init(void);
 void s4527438_os_radio_send_join_packet(void);
 void s4527438_os_radio_send_xyz_packet(uint32_t x_coordinate, uint32_t y_coordinate, uint32_t z_coordinate);
+void s4527438_os_radio_move_only_xy(uint32_t x_coordinate, uint32_t y_coordinate);
+void s4527438_os_radio_move_only_z(uint32_t z_coordinate);
 void s4527438_os_radio_send_vacuum_packet(Message_Vacuum_Action_Enum vacuum_action);
 
 void s4527438_os_radio_load_sorter_setting(uint32_t sorter_index);
