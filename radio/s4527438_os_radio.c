@@ -91,6 +91,8 @@ typedef struct{
     uint8_t     is_switch;
 
     uint8_t     is_enable_4_bit_swap;
+    uint16_t    block_list[ORB_BLOCK_LIST_LEN];
+    uint8_t     block_list_cur_index;
 }ORB_handler_Type;
 
 struct Message {    /* Message consists of sequence number and payload string */
@@ -359,13 +361,14 @@ void s4527438_os_radio_orb_on_off(uint8_t is_switch) {
     }
 }
 
-void s4527438_os_radio_orb_test_send_RAE(uint8_t color,uint32_t x_coordinate, uint32_t y_coordinate) {
+void s4527438_os_radio_orb_test_send_RAE(uint8_t ID,uint8_t color,uint32_t x_coordinate, uint32_t y_coordinate) {
     struct Message SendMessage;
 
     SendMessage.MessageType = MESSAGE_ORB_TEST_SEND_RAE_COLOR_AND_COORDINATE;
     SendMessage.color = color;
     SendMessage.x_coordinate = x_coordinate;
     SendMessage.y_coordinate = y_coordinate;
+    SendMessage.select_index = ID;
 
     if (s4527438QueueSorterPacketSend != NULL) { /* Check if queue exists */
         xQueueSend(s4527438QueueSorterPacketSend, ( void * ) &SendMessage, ( portTickType ) 0 );
@@ -687,6 +690,34 @@ static void process_hal_fsm_after_packets_sent(void){
     }
 }
 
+static uint8_t orb_is_ID_in_block_list(uint16_t obj_id){
+    uint8_t i = 0;
+
+    for(i = 0; i < ORB_BLOCK_LIST_LEN ;i++){
+        if( obj_id == orb_handler.block_list[i] ) {
+            return RADIO_TYPE_TRUE;
+        }
+    }
+    return RADIO_TYPE_FALSE;
+}
+
+static uint8_t orb_put_ID_in_block_list(uint16_t obj_id){
+    if( orb_handler.block_list_cur_index < ORB_BLOCK_LIST_LEN ) {
+        orb_handler.block_list[orb_handler.block_list_cur_index] = obj_id;
+        (orb_handler.block_list_cur_index)++;
+    }
+}
+
+static void orb_reset_block_list(void){
+    uint8_t i = 0;
+
+	debug_printf("reset block list\r\n");
+    orb_handler.block_list_cur_index = 0;
+    for(i = 0; i < ORB_BLOCK_LIST_LEN ;i++){
+        orb_handler.block_list[i] = 0;
+    }
+}
+
 static void RadioTask( void ) {
 
     struct Message RecvMessage;
@@ -790,17 +821,28 @@ static void RadioTask( void ) {
                 case MESSAGE_ORB_ON_OFF_CMD:
                     orb_handler.is_switch = RecvMessage.is_switch;
 	                debug_printf("[orb on/off]: <%d>\r\n",orb_handler.is_switch);
+                    if( orb_handler.is_switch == RADIO_TYPE_OFF ) {
+                        orb_reset_block_list();
+                    }
                     break;
                 case MESSAGE_ORB_TEST_SEND_RAE_COLOR_AND_COORDINATE:
-                    if( RecvMessage.color >= 0 && RecvMessage.color <= OBJ_COLOR_MAX ) {
-                        s4527438_os_radio_send_xyz_packet(RecvMessage.x_coordinate, RecvMessage.y_coordinate, sorter_z_max_value);
-                        s4527438_os_radio_send_vacuum_packet(VACUUM_ON);
-                        s4527438_os_radio_send_xyz_packet(RecvMessage.x_coordinate, RecvMessage.y_coordinate, 0);
-                        s4527438_os_radio_send_xyz_packet(sorter_handler.color_map[RecvMessage.color].x_coordinate, sorter_handler.color_map[RecvMessage.color].y_coordinate, sorter_z_max_value);
-                        s4527438_os_radio_send_vacuum_packet(VACUUM_OFF);
-                        s4527438_os_radio_send_xyz_packet(sorter_handler.color_map[RecvMessage.color].x_coordinate, sorter_handler.color_map[RecvMessage.color].y_coordinate, 0);
+                    {
+                        uint8_t rae_id = RecvMessage.select_index;
+                        uint8_t is_RAE_id_in_block_list = RADIO_TYPE_FALSE;
+                        is_RAE_id_in_block_list = orb_is_ID_in_block_list(rae_id);
+                        if( (RecvMessage.color >= 0 && RecvMessage.color <= OBJ_COLOR_MAX) &&
+                            !is_RAE_id_in_block_list
+                        ) {
+                            s4527438_os_radio_send_xyz_packet(RecvMessage.x_coordinate, RecvMessage.y_coordinate, sorter_z_max_value);
+                            s4527438_os_radio_send_vacuum_packet(VACUUM_ON);
+                            s4527438_os_radio_send_xyz_packet(RecvMessage.x_coordinate, RecvMessage.y_coordinate, 0);
+                            s4527438_os_radio_send_xyz_packet(sorter_handler.color_map[RecvMessage.color].x_coordinate, sorter_handler.color_map[RecvMessage.color].y_coordinate, sorter_z_max_value);
+                            s4527438_os_radio_send_vacuum_packet(VACUUM_OFF);
+                            s4527438_os_radio_send_xyz_packet(sorter_handler.color_map[RecvMessage.color].x_coordinate, sorter_handler.color_map[RecvMessage.color].y_coordinate, 0);
 
-	                    debug_printf("[Enter send RAE]\r\n");
+                            orb_put_ID_in_block_list(rae_id);
+	                        debug_printf("[Enter send RAE]\r\n");
+                        }
                     }
                     break;
                 case MESSAGE_ORB_DEBUG_4_BIT_SWAP_ON_OFF_CMD:
@@ -1090,21 +1132,26 @@ static void RadioTask( void ) {
                     }
                     {
                         uint8_t rx_buffer[RADIO_HAL_TOTAL_PACKET_WIDTH];
+                        uint8_t is_RAE_id_in_block_list = RADIO_TYPE_FALSE;
                         memset(rx_buffer,0x00,sizeof(rx_buffer));
                         for(i = 0;i < RADIO_RX_RETRY_COUNT;i++){
                             s4527438_hal_radio_fsmprocessing();
 	                        if( s4527438_hal_radio_getrxstatus() == RX_STATUS_PACKET_RECEIVED ) {
                                 s4527438_hal_radio_getpacket(rx_buffer);
                                 radio_RAE_parser(rx_buffer,&parsed_RAE);
+                                is_RAE_id_in_block_list = orb_is_ID_in_block_list(parsed_RAE.ID);
 
                                 if( orb_handler.is_switch == RADIO_TYPE_ON ) {
-                                    if( parsed_RAE.color >= 0 && parsed_RAE.color <= OBJ_COLOR_MAX ) {
+                                    if( (parsed_RAE.color >= 0 && parsed_RAE.color <= OBJ_COLOR_MAX) &&
+                                        !is_RAE_id_in_block_list
+                                         ) {
                                         s4527438_os_radio_send_xyz_packet(parsed_RAE.x_coordinate, parsed_RAE.y_coordinate, sorter_z_max_value);
                                         s4527438_os_radio_send_vacuum_packet(VACUUM_ON);
                                         s4527438_os_radio_send_xyz_packet(parsed_RAE.x_coordinate, parsed_RAE.y_coordinate, 0);
                                         s4527438_os_radio_send_xyz_packet(sorter_handler.color_map[parsed_RAE.color].x_coordinate, sorter_handler.color_map[parsed_RAE.color].y_coordinate, sorter_z_max_value);
                                         s4527438_os_radio_send_vacuum_packet(VACUUM_OFF);
                                         s4527438_os_radio_send_xyz_packet(sorter_handler.color_map[parsed_RAE.color].x_coordinate, sorter_handler.color_map[parsed_RAE.color].y_coordinate, 0);
+                                        orb_put_ID_in_block_list(parsed_RAE.ID);
                                     }
                                 }
 

@@ -168,9 +168,9 @@ CLI_Command_Definition_t xRadioOrbOnOff = {  /* Structure that defines the "pan"
 };
 CLI_Command_Definition_t xRadioOrbTestSendRAE = {  /* Structure that defines the "pan" command line command. */
     "orbtest",
-    "orbtest: orbtest <red|green|blue|yellow|orange> <x_coordinate> <y_coordinate> \r\n",
+    "orbtest: orbtest <RAE ID> <red|green|blue|yellow|orange> <x_coordinate> <y_coordinate> \r\n",
     prvRadioOrbTestSendRAE,
-    3
+    4
 };
 CLI_Command_Definition_t xRadioOrbDebugRAE4BitSwapOnOff = {  /* Structure that defines the "pan" command line command. */
     "orb4bitswap",
@@ -647,11 +647,32 @@ static BaseType_t prvRadioOrbTestSendRAE(char *pcWriteBuffer, size_t xWriteBuffe
     uint32_t x_coordinate = 0;
     uint32_t y_coordinate = 0;
     uint8_t  color_index = 0;
+    uint8_t  RAE_index = 0;
     // We always need to stop search further, even if the command is not correct
     BaseType_t returnedValue = pdFALSE;
 
     /* Get parameters 1 from command string */
     cCmd_string = FreeRTOS_CLIGetParameter(pcCommandString, 1, &lParam_len);
+
+    if( cCmd_string != NULL ) {
+        int i = 0;
+        uint8_t numeric_string[4];
+
+        memset(numeric_string,0x00,sizeof(numeric_string));
+        for( i = 0; i < lParam_len ;i++) {
+            if( cCmd_string[i] < '0'
+                || cCmd_string[i] > '9' ) {
+                return returnedValue;
+            }
+            numeric_string[i] = cCmd_string[i];
+        }
+        RAE_index = atoi(numeric_string);
+    } else {
+        return returnedValue;
+    }
+
+    /* Get parameters 2 from command string */
+    cCmd_string = FreeRTOS_CLIGetParameter(pcCommandString, 2, &lParam_len);
 
     if( cCmd_string != NULL ) {
         int i = 0;
@@ -675,8 +696,8 @@ static BaseType_t prvRadioOrbTestSendRAE(char *pcWriteBuffer, size_t xWriteBuffe
         return returnedValue;
     }
 
-    /* Get parameters 2 from command string */
-    cCmd_string = FreeRTOS_CLIGetParameter(pcCommandString, 2, &lParam_len);
+    /* Get parameters 3 from command string */
+    cCmd_string = FreeRTOS_CLIGetParameter(pcCommandString, 3, &lParam_len);
 
     if( cCmd_string != NULL ) {
         int i = 0;
@@ -695,8 +716,8 @@ static BaseType_t prvRadioOrbTestSendRAE(char *pcWriteBuffer, size_t xWriteBuffe
         return returnedValue;
     }
 
-    /* Get parameters 3 from command string */
-    cCmd_string = FreeRTOS_CLIGetParameter(pcCommandString, 3, &lParam_len);
+    /* Get parameters 4 from command string */
+    cCmd_string = FreeRTOS_CLIGetParameter(pcCommandString, 4, &lParam_len);
 
     if( cCmd_string != NULL ) {
         int i = 0;
@@ -715,7 +736,7 @@ static BaseType_t prvRadioOrbTestSendRAE(char *pcWriteBuffer, size_t xWriteBuffe
         return returnedValue;
     }
 
-    s4527438_os_radio_orb_test_send_RAE(color_index,x_coordinate,y_coordinate);
+    s4527438_os_radio_orb_test_send_RAE(RAE_index,color_index,x_coordinate,y_coordinate);
 
     return returnedValue;
 }
