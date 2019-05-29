@@ -883,8 +883,10 @@ static void RadioTask( void ) {
                                     break;
                                 }else if( strcmp(&(rx_buffer[RADIO_HAL_HEADER_WIDTH]),"N A C K") == 0 ) {
                                     need_retrasmit = 1;
+                                    debug_printf("Received: N A C K\n\r");
                                 }else if( strcmp(&(rx_buffer[RADIO_HAL_HEADER_WIDTH]),"E R R") == 0 ) {
                                     need_retrasmit = 1;
+                                    debug_printf("Received: E R R\n\r");
                                 }
                             } else if( s4527438_hal_radio_getrxstatus() == RX_STATUS_PACKET_DECODE_ERROR ) {
                                 debug_printf("[H ERROR][2-bit error]\n\r");
@@ -939,8 +941,10 @@ static void RadioTask( void ) {
                                     break;
                                 }else if( strcmp(&(rx_buffer[RADIO_HAL_HEADER_WIDTH]),"N A C K") == 0 ) {
                                     need_retrasmit = 1;
+                                    debug_printf("Received: N A C K\n\r");
                                 }else if( strcmp(&(rx_buffer[RADIO_HAL_HEADER_WIDTH]),"E R R") == 0 ) {
                                     need_retrasmit = 1;
+                                    debug_printf("Received: E R R\n\r");
                                 }
                             } else if( s4527438_hal_radio_getrxstatus() == RX_STATUS_PACKET_DECODE_ERROR ) {
                                 debug_printf("[H ERROR][2-bit error]\n\r");
@@ -994,8 +998,10 @@ static void RadioTask( void ) {
                                     break;
                                 }else if( strcmp(&(rx_buffer[RADIO_HAL_HEADER_WIDTH]),"N A C K") == 0 ) {
                                     need_retrasmit = 1;
+                                    debug_printf("Received: N A C K\n\r");
                                 }else if( strcmp(&(rx_buffer[RADIO_HAL_HEADER_WIDTH]),"E R R") == 0 ) {
                                     need_retrasmit = 1;
+                                    debug_printf("Received: E R R\n\r");
                                 }
                             } else if( s4527438_hal_radio_getrxstatus() == RX_STATUS_PACKET_DECODE_ERROR ) {
                                 debug_printf("[H ERROR][2-bit error]\n\r");
